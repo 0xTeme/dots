@@ -1,0 +1,16 @@
+[templates]
+foot.template = "foot.ini"
+foot.target = "~/.config/foot/colors.ini"
+foot.pywal = true
+
+zathura.template = "zathurarc"
+zathura.target = "~/.config/zathura/zathurarc"
+zathura.pywal = true
+
+fuzzel.template = "fuzzel.ini"
+fuzzel.target = "~/.config/fuzzel/colors.ini"
+fuzzel.pywal = true
+
+qutebrowser.template = "qutebrowser.py"
+qutebrowser.target = "~/.config/qutebrowser/colors.py"
+qutebrowser.pywal = true

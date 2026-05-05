@@ -1,0 +1,17 @@
+#!/bin/sh
+mkdir -p ~/Pictures/Screenshots
+
+case "$1" in
+    full)
+        # Full screen
+        grim ~/Pictures/Screenshots/$(date '+%Y%m%d_%H%M%S').png
+        ;;
+    area)
+        # Select area, save to file and copy to clipboard
+        grim -g "$(slurp)" - | tee ~/Pictures/Screenshots/$(date '+%Y%m%d_%H%M%S').png | wl-copy
+        ;;
+    *)
+        # Default: select area
+        grim -g "$(slurp)" - | tee ~/Pictures/Screenshots/$(date '+%Y%m%d_%H%M%S').png | wl-copy
+        ;;
+esac
