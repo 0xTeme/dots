@@ -1,0 +1,27 @@
+#!/bin/sh
+export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin"
+
+BAT=$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null)
+BAT_STATUS=$(cat /sys/class/power_supply/BAT0/status 2>/dev/null)
+BAT_TIME=$(acpi -b 2>/dev/null | grep -oP '\d+:\d+(?=:\d+ )' | head -1)
+VOL=$(pamixer --get-volume 2>/dev/null)
+MUTE=$(pamixer --get-mute 2>/dev/null)
+TIME=$(date '+%H:%M')
+DATE=$(date '+%a %d %b')
+
+if [ "$MUTE" = "true" ]; then
+    VOL_STR="^fg(f38ba8)󰖁 MUTE^fg()"
+else
+    VOL_STR="^fg(a6e3a1)󰕾 ${VOL}%^fg()"
+fi
+
+if [ "$BAT_STATUS" = "Charging" ]; then
+    BAT_STR="^fg(f9e2af)⚡${BAT}%^fg()"
+else
+    BAT_STR="^fg(cba6f7)󰁹 ${BAT}% ${BAT_TIME}^fg()"
+fi
+
+TIME_STR="^fg(89b4fa)${TIME}^fg()"
+DATE_STR="^fg(cdd6f4)${DATE}^fg()"
+
+dwlb -status all "  ${VOL_STR}    ${BAT_STR}    ${DATE_STR}    ${TIME_STR}  "
