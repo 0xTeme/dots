@@ -14,3 +14,11 @@ fuzzel.pywal = true
 qutebrowser.template = "qutebrowser.py"
 qutebrowser.target = "~/.config/qutebrowser/colors.py"
 qutebrowser.pywal = true
+
+btop.template = "btop.theme"
+btop.target = "~/.config/btop/themes/wallust.theme"
+btop.pywal = true
+
+tmux.template = "tmux.conf"
+tmux.target = "~/.config/wallust/tmux-colors.conf"
+tmux.pywal = true
