@@ -1,0 +1,5 @@
+#!/bin/sh
+export PATH="/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin"
+while mpc idle player 2>/dev/null; do
+  statusbar
+done

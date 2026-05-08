@@ -7,8 +7,10 @@ foot --server &
 waypaper --restore &
 
 while true; do
-    /home/temesgen/.local/bin/statusbar
-    sleep 30
+  /home/temesgen/.local/bin/statusbar
+  sleep 30
 done &
+
+/home/temesgen/.local/bin/mpd-statusbar >/dev/null 2>&1 &
 
 dwlb -ipc
