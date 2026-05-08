@@ -22,3 +22,7 @@ btop.pywal = true
 tmux.template = "tmux.conf"
 tmux.target = "~/.config/wallust/tmux-colors.conf"
 tmux.pywal = true
+
+mako.template = "mako"
+mako.target = "~/.config/mako/config"
+mako.pywal = true
