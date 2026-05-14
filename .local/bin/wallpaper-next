@@ -1,0 +1,17 @@
+#!/bin/sh
+WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+CURRENT=$(grep "^wallpaper\s*=" ~/.config/waypaper/config.ini | cut -d= -f2 | tr -d ' ' | sed "s|~|$HOME|")
+CURRENT_BASE=$(basename "$CURRENT")
+
+# Get sorted list of wallpapers
+WALLPAPERS=$(ls "$WALLPAPER_DIR" | sort)
+TOTAL=$(echo "$WALLPAPERS" | wc -l)
+
+# Find current index
+INDEX=$(echo "$WALLPAPERS" | grep -n "^${CURRENT_BASE}$" | cut -d: -f1)
+
+# Get next index, wrap around
+NEXT_INDEX=$((INDEX % TOTAL + 1))
+NEXT=$(echo "$WALLPAPERS" | sed -n "${NEXT_INDEX}p")
+
+waypaper --wallpaper "$WALLPAPER_DIR/$NEXT"
