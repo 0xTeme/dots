@@ -14,4 +14,7 @@ INDEX=$(echo "$WALLPAPERS" | grep -n "^${CURRENT_BASE}$" | cut -d: -f1)
 NEXT_INDEX=$((INDEX % TOTAL + 1))
 NEXT=$(echo "$WALLPAPERS" | sed -n "${NEXT_INDEX}p")
 
-waypaper --wallpaper "$WALLPAPER_DIR/$NEXT"
+awww img "$WALLPAPER_DIR/$NEXT" --transition-type fade --transition-fps 60
+sed -i "s|^wallpaper\s*=.*|wallpaper = $WALLPAPER_DIR/$NEXT|" ~/.config/waypaper/config.ini
+wallust run "$WALLPAPER_DIR/$NEXT" &
+makoctl reload &
