@@ -53,6 +53,7 @@ config.bind("M", "hint links spawn foot -e yt-dlp {hint-url}")
 
 # Load wallust colors
 import os
+
 colors_file = os.path.expanduser("~/.config/qutebrowser/colors.py")
 if os.path.exists(colors_file):
     with open(colors_file) as f:
