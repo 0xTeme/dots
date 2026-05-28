@@ -1,0 +1,4 @@
+[mgr]
+prepend_keymap = [
+    { on = ["g", "u"], run = "cd /run/media/temesgen", desc = "Go to USB mounts" },
+]
