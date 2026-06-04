@@ -14,6 +14,7 @@ cat ~/.cache/wallust/sequences 2>/dev/null
 eval "$(starship init bash)"
 eval "$(fzf --bash)"
 
-if [[ -z "$TMUX" ]] && [[ -n "$PS1" ]]; then
-    exec tmux new-session -A -s main
+if [[ -z "$TMUX" ]] && [[ -n "$PS1" ]] && [[ -z "$NO_TMUX" ]]; then
+  exec tmux new-session -A -s main
 fi
+export EDITOR=nvim

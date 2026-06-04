@@ -1,0 +1,10 @@
+[opener]
+markdown = [
+    { run = 'md-viewer "$@"', desc = "md-viewer", orphan = true },
+]
+
+[open]
+prepend_rules = [
+    { mime = "text/markdown", use = "markdown" },
+    { url = "*.md", use = "markdown" },
+]
