@@ -1,4 +1,7 @@
 [opener]
+text = [
+    { run = 'nvim "$@"', desc = "nvim", block = true },
+]
 markdown = [
     { run = 'md-viewer "$@"', desc = "md-viewer", orphan = true },
 ]
@@ -7,4 +10,5 @@ markdown = [
 prepend_rules = [
     { mime = "text/markdown", use = "markdown" },
     { url = "*.md", use = "markdown" },
+    { mime = "text/*", use = "text" },
 ]
