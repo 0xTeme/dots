@@ -26,18 +26,19 @@
   flake.modules.homeManager.niri = { lib, ... }: {
     # config.kdl is the entry point. It includes base.kdl, which in turn includes
     # Noctalia's generated noctalia.kdl.
-    xdg.configFile."niri/config.kdl" = {
-      source = ./config.kdl;
-      force = true;
-    };
-
     xdg.configFile."niri/base.kdl" = {
       source = ./base.kdl;
       force = true;
     };
 
     # toggles.kdl and cursor.kdl must exist, otherwise niri logs a warning on every config reload.
+    # config.kdl is copied as a regular file rather than symlinked, because the Noctalia
+    # cursor plugin touches (os.utime) it to force niri to reload the included cursor.kdl.
     home.activation.niriToggles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      $DRY_RUN_CMD mkdir -p $HOME/.config/niri
+      $DRY_RUN_CMD rm -f $HOME/.config/niri/config.kdl
+      $DRY_RUN_CMD cat ${./config.kdl} > $HOME/.config/niri/config.kdl
+
       if [ ! -e "$HOME/.config/niri/toggles.kdl" ]; then
         $DRY_RUN_CMD touch "$HOME/.config/niri/toggles.kdl"
       fi
