@@ -36,10 +36,13 @@
       force = true;
     };
 
-    # toggles.kdl must exist, otherwise niri logs a warning on every config reload.
+    # toggles.kdl and cursor.kdl must exist, otherwise niri logs a warning on every config reload.
     home.activation.niriToggles = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       if [ ! -e "$HOME/.config/niri/toggles.kdl" ]; then
         $DRY_RUN_CMD touch "$HOME/.config/niri/toggles.kdl"
+      fi
+      if [ ! -e "$HOME/.config/niri/cursor.kdl" ]; then
+        $DRY_RUN_CMD touch "$HOME/.config/niri/cursor.kdl"
       fi
     '';
   };

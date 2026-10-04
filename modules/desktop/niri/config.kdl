@@ -73,3 +73,6 @@ layer-rule {
 
 // Written by niri-toggle-touch. Included last so it overrides everything above.
 include optional=true "toggles.kdl"
+
+// Written by Noctalia cursor plugin.
+include "cursor.kdl"
