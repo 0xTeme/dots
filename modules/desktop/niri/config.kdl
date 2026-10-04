@@ -42,6 +42,12 @@ binds {
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
 }
 
+window-rule {
+    match app-id="^foot$"
+    opacity 0.85
+    blur true
+}
+
 // Floats rmpc at a size tall enough for square album art plus a header/status strip
 // without squeezing it. Adjust the two fixed numbers once you see it live.
 window-rule {
