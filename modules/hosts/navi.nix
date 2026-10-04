@@ -25,6 +25,7 @@
       greeter
       noctalia
       input-method
+      cursor
       foot
       telegram
       libreoffice

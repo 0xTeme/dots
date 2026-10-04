@@ -33,6 +33,7 @@ binds {
     // Mod+V is niri's own toggle-floating, so this pairs with Shift like the other
     // Noctalia panel binds (Mod+Shift+W wallpaper, Mod+Shift+S settings).
     Mod+Shift+V hotkey-overlay-title="Clipboard History: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "clipboard"; }
+    Mod+Shift+C hotkey-overlay-title="Cursor Theme: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "vn1k/cursor:manager"; }
 
     // Instant random wallpaper with a transition animation, distinct from
     // Mod+Shift+W which only opens the picker UI.

@@ -6,7 +6,6 @@
       iosevka
       (pkgs.iosevka-bin.override { variant = "Aile"; })
       (pkgs.iosevka-bin.override { variant = "Etoile"; })
-      bibata-cursors
       noto-fonts
       noto-fonts-color-emoji
     ];
