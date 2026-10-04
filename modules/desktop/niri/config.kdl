@@ -57,6 +57,10 @@ window-rule {
     open-floating true
     default-column-width { fixed 912; }
     default-window-height { fixed 742; }
+    opacity 0.85
+    background-effect {
+        blur true
+    }
 }
 
 // Show a blurred, dimmed copy of the wallpaper in the overview (Super+O).
