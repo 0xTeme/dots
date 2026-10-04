@@ -1,0 +1,62 @@
+// Entry point. base.kdl is the original configuration, left untouched.
+// Includes are positional and later settings win, so everything below overrides it.
+include "base.kdl"
+
+input {
+    // Pointing-device sections are replaced, not merged, so this restates the whole
+    // touchpad section from base.kdl and adds dwt and dwtp.
+    touchpad {
+        tap
+        natural-scroll
+
+        // Ignore the touchpad while typing and while using the trackpoint.
+        dwt
+        dwtp
+    }
+
+    mouse {
+        // Reduce speed (-1.0 is slowest, 0.0 is default, 1.0 is fastest)
+        accel-speed -0.5
+    }
+}
+
+binds {
+    // The old bind called swaylock, which is not installed. Noctalia has its own lock screen.
+    Super+Alt+L hotkey-overlay-title="Lock the Screen: Noctalia" { spawn "noctalia" "msg" "session" "lock"; }
+
+    // Noctalia's logout, reboot and shutdown menu.
+    Mod+X hotkey-overlay-title="Power Menu: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "session"; }
+
+    // Turn the touchscreen on or off (the script is defined in niri.nix).
+    Mod+Ctrl+T hotkey-overlay-title="Toggle Touchscreen" { spawn "niri-toggle-touch"; }
+
+    // Mod+V is niri's own toggle-floating, so this pairs with Shift like the other
+    // Noctalia panel binds (Mod+Shift+W wallpaper, Mod+Shift+S settings).
+    Mod+Shift+V hotkey-overlay-title="Clipboard History: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "clipboard"; }
+
+    // Instant random wallpaper with a transition animation, distinct from
+    // Mod+Shift+W which only opens the picker UI.
+    Mod+Ctrl+Shift+W hotkey-overlay-title="Random Wallpaper: Noctalia" { spawn "noctalia" "msg" "wallpaper-random"; }
+
+    // A distinct app-id so the window-rule below only ever matches this one instance.
+    Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
+}
+
+// Floats rmpc at a size tall enough for square album art plus a header/status strip
+// without squeezing it. Adjust the two fixed numbers once you see it live.
+window-rule {
+    match app-id="^rmpc-floating$"
+    open-floating true
+    default-column-width { fixed 912; }
+    default-window-height { fixed 742; }
+}
+
+// Show a blurred, dimmed copy of the wallpaper in the overview (Super+O).
+// Noctalia's docs call this layer "noctalia-backdrop" in v5 (was "noctalia-overview" in v4).
+layer-rule {
+    match namespace="^noctalia-backdrop"
+    place-within-backdrop true
+}
+
+// Written by niri-toggle-touch. Included last so it overrides everything above.
+include optional=true "toggles.kdl"
