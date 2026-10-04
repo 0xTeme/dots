@@ -45,7 +45,9 @@ binds {
 window-rule {
     match app-id="^foot$"
     opacity 0.85
-    blur true
+    background-effect {
+        blur true
+    }
 }
 
 // Floats rmpc at a size tall enough for square album art plus a header/status strip
