@@ -26,6 +26,7 @@ in
       users.${user} = {
         imports = with config.flake.modules.homeManager; [
           niri
+          cursor
           nixvim
           bash
           fzf
