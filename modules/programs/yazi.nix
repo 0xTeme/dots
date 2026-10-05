@@ -40,10 +40,6 @@
           desc = "Mount, unmount, eject and jump to drives";
         }
       ];
-
-      initLua = ''
-        require("full-border"):setup({ type = ui.Border.PLAIN })
-      '';
     };
   };
 }
