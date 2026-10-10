@@ -15,6 +15,7 @@
       disks
       security
       base-packages
+      pavucontrol
       security-tools
       screen-recorder
       docker
