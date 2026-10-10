@@ -1,12 +1,18 @@
 {
-  # GTK3 apps check two places for dark mode. Noctalia writes the colors (gtk.css,
-  # noctalia.css) but doesn't set either preference, so we set both here.
-  flake.modules.homeManager.gtk-dark = {
-    dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+  # GTK3 apps only switch to dark when the active theme has a dark variant. Naming
+  # Adwaita-dark sets that theme; the preference flags reinforce it. Noctalia supplies
+  # the colors through gtk.css, which is still Noctalia-owned and not touched here.
+  flake.modules.homeManager.gtk-dark = { pkgs, ... }: {
+    gtk = {
+      enable = true;
+      theme = {
+        name = "Adwaita-dark";
+        package = pkgs.gnome-themes-extra;
+      };
+      gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
+      gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
+    };
 
-    xdg.configFile."gtk-3.0/settings.ini".text = ''
-      [Settings]
-      gtk-application-prefer-dark-theme=true
-    '';
+    dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
   };
 }
