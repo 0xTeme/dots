@@ -42,6 +42,7 @@ binds {
     Mod+Shift+B hotkey-overlay-title="Toggle Bar: Noctalia" { spawn "noctalia" "msg" "bar-toggle"; }
     Mod+Ctrl+G hotkey-overlay-title="Toggle Gaps" { spawn "niri-toggle-look" "gaps"; }
     Mod+Ctrl+B hotkey-overlay-title="Toggle Blur" { spawn "niri-toggle-look" "blur"; }
+    Mod+Ctrl+A hotkey-overlay-title="Toggle Transparency" { spawn "niri-toggle-look" "transparency"; }
 
     // A distinct app-id so the window-rule below only ever matches this one instance.
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
@@ -79,6 +80,7 @@ layer-rule {
 include optional=true "toggles.kdl"
 include optional=true "gaps.kdl"
 include optional=true "blur.kdl"
+include optional=true "transparency.kdl"
 
 // Written by Noctalia cursor plugin.
 include "cursor.kdl"

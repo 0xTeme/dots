@@ -24,12 +24,16 @@
         arg="$1"
         if [ "$arg" = "gaps" ]; then
           f="$HOME/.config/niri/gaps.kdl"
-          off_content='layout {\n    gaps 0\n}\n'
+          off_content='layout {\n    gaps 0\n    struts {\n        left 4\n        right 4\n        top 4\n        bottom 4\n    }\n}\n'
           title="Gaps"
         elif [ "$arg" = "blur" ]; then
           f="$HOME/.config/niri/blur.kdl"
           off_content='window-rule {\n    background-effect {\n        blur false\n    }\n}\n'
           title="Blur"
+        elif [ "$arg" = "transparency" ]; then
+          f="$HOME/.config/niri/transparency.kdl"
+          off_content='window-rule {\n    opacity 1.0\n    background-effect {\n        blur false\n    }\n}\n'
+          title="Transparency"
         else
           exit 1
         fi
@@ -72,6 +76,9 @@
       fi
       if [ ! -e "$HOME/.config/niri/blur.kdl" ]; then
         $DRY_RUN_CMD touch "$HOME/.config/niri/blur.kdl"
+      fi
+      if [ ! -e "$HOME/.config/niri/transparency.kdl" ]; then
+        $DRY_RUN_CMD touch "$HOME/.config/niri/transparency.kdl"
       fi
     '';
   };
