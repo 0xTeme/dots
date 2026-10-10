@@ -6,9 +6,16 @@
 
       # Flavor selection is config, so Nix owns it. Noctalia's apply.sh only rewrites
       # theme.toml when the content differs, so with exactly this it does nothing.
-      theme.flavor = {
-        dark = "noctalia";
-        light = "noctalia";
+      theme = {
+        flavor = {
+          dark = "noctalia";
+          light = "noctalia";
+        };
+
+        status.sep_left = { open = ""; close = ""; };
+        status.sep_right = { open = ""; close = ""; };
+        tabs.sep_inner = { open = ""; close = ""; };
+        tabs.sep_outer = { open = ""; close = ""; };
       };
 
       settings = {
