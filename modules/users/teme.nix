@@ -41,6 +41,7 @@ in
           glow
           mime
           mpd
+          mpd-mpris
           rmpc
           theme-reload
           librewolf
