@@ -12,10 +12,14 @@
           light = "noctalia";
         };
 
+        # Empty caps remove the rounded Powerline-style ends on status and tabs.
         status.sep_left = { open = ""; close = ""; };
         status.sep_right = { open = ""; close = ""; };
         tabs.sep_inner = { open = ""; close = ""; };
         tabs.sep_outer = { open = ""; close = ""; };
+
+        # Caps around the highlight bar in each pane. Empty makes it a flat block.
+        indicator.padding = { open = ""; close = ""; };
       };
 
       settings = {
