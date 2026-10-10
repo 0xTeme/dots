@@ -20,6 +20,28 @@
           noctalia msg notification-show "Touchscreen disabled"
         fi
       '')
+      (pkgs.writeShellScriptBin "niri-toggle-look" ''
+        arg="$1"
+        if [ "$arg" = "gaps" ]; then
+          f="$HOME/.config/niri/gaps.kdl"
+          off_content='layout {\n    gaps 0\n}\n'
+          title="Gaps"
+        elif [ "$arg" = "blur" ]; then
+          f="$HOME/.config/niri/blur.kdl"
+          off_content='window-rule {\n    background-effect {\n        blur false\n    }\n}\n'
+          title="Blur"
+        else
+          exit 1
+        fi
+
+        if [ -s "$f" ]; then
+          : > "$f"
+          noctalia msg notification-show "$title enabled"
+        else
+          printf "$off_content" > "$f"
+          noctalia msg notification-show "$title disabled"
+        fi
+      '')
     ];
   };
 
@@ -44,6 +66,12 @@
       fi
       if [ ! -e "$HOME/.config/niri/cursor.kdl" ]; then
         $DRY_RUN_CMD touch "$HOME/.config/niri/cursor.kdl"
+      fi
+      if [ ! -e "$HOME/.config/niri/gaps.kdl" ]; then
+        $DRY_RUN_CMD touch "$HOME/.config/niri/gaps.kdl"
+      fi
+      if [ ! -e "$HOME/.config/niri/blur.kdl" ]; then
+        $DRY_RUN_CMD touch "$HOME/.config/niri/blur.kdl"
       fi
     '';
   };

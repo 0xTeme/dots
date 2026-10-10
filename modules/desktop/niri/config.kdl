@@ -39,6 +39,10 @@ binds {
     // Mod+Shift+W which only opens the picker UI.
     Mod+Ctrl+Shift+W hotkey-overlay-title="Random Wallpaper: Noctalia" { spawn "noctalia" "msg" "wallpaper-random"; }
 
+    Mod+Shift+B hotkey-overlay-title="Toggle Bar: Noctalia" { spawn "noctalia" "msg" "bar-toggle"; }
+    Mod+Ctrl+G hotkey-overlay-title="Toggle Gaps" { spawn "niri-toggle-look" "gaps"; }
+    Mod+Ctrl+B hotkey-overlay-title="Toggle Blur" { spawn "niri-toggle-look" "blur"; }
+
     // A distinct app-id so the window-rule below only ever matches this one instance.
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
 }
@@ -73,6 +77,8 @@ layer-rule {
 
 // Written by niri-toggle-touch. Included last so it overrides everything above.
 include optional=true "toggles.kdl"
+include optional=true "gaps.kdl"
+include optional=true "blur.kdl"
 
 // Written by Noctalia cursor plugin.
 include "cursor.kdl"
