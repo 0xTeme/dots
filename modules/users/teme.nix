@@ -44,6 +44,7 @@ in
           mpd-mpris
           rmpc
           theme-reload
+          gtk-dark
           librewolf
           opencode
           agy
