@@ -18,8 +18,10 @@
         tabs.sep_inner = { open = ""; close = ""; };
         tabs.sep_outer = { open = ""; close = ""; };
 
-        # Caps around the highlight bar in each pane. Empty makes it a flat block.
-        indicator.padding = { open = ""; close = ""; };
+        # Half-block caps around the highlight bar. The docs use these exact
+        # characters as the example for a square indicator. The left cap adds a
+        # flat, sharp gap between the highlight edge and the icon.
+        indicator.padding = { open = "▐"; close = "▌"; };
       };
 
       settings = {
