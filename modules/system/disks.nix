@@ -1,11 +1,14 @@
 {
-  # Backend for mounting removable media from userspace; udisksctl (its own CLI,
-  # which modules/programs/yazi.nix's mount plugin uses) comes bundled with this.
-  # D-Bus activated, so no idle cost until something actually asks it to mount
-  # something. A logged-in graphical session can mount/unmount its own removable
-  # media without extra group membership, that's udisks2's default polkit policy.
   flake.modules.nixos.disks = { pkgs, ... }: {
     services.udisks2.enable = true;
+
+    # Monthly btrfs scrub on the root filesystem. It reads every block and checks it
+    # against its checksums, so problems show up early instead of when a file is read.
+    services.btrfs.autoScrub = {
+      enable = true;
+      interval = "monthly";
+      fileSystems = [ "/" ];
+    };
 
     environment.systemPackages = [ pkgs.util-linux ];
   };
