@@ -49,6 +49,7 @@ binds {
 }
 
 window-rule {
+    draw-border-with-background false
     opacity 0.85
     background-effect {
         blur true
