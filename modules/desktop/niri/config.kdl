@@ -49,7 +49,7 @@ binds {
     // A distinct app-id so the window-rule below only ever matches this one instance.
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
     Mod+Ctrl+Shift+B hotkey-overlay-title="System Monitor: btop" { spawn "foot" "--app-id=btop-floating" "-e" "btop"; }
-    Mod+Ctrl+Shift+T hotkey-overlay-title="Typing Practice: ttyper" { spawn "foot" "--app-id=typing-floating" "-e" "ttyper"; }
+    Mod+Ctrl+Shift+T hotkey-overlay-title="Typing Practice: smassh" { spawn "foot" "--app-id=typing-floating" "-e" "smassh"; }
 }
 
 window-rule {
