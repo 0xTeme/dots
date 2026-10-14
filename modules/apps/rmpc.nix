@@ -41,7 +41,7 @@
           ),
           // Matches the fifo output declared in modules/apps/mpd.nix.
           cava: (
-              framerate: 60,
+              framerate: 30,
               autosens: true,
               sensitivity: 100,
               input: (

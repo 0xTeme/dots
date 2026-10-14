@@ -49,6 +49,13 @@ binds {
 }
 
 window-rule {
+    opacity 0.85
+    background-effect {
+        blur true
+    }
+}
+
+window-rule {
     match app-id="^foot$"
     opacity 0.85
     background-effect {
