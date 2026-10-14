@@ -43,6 +43,8 @@ in
           mpd
           mpd-mpris
           rmpc
+          btop
+          typing
           theme-reload
           gtk-dark
           librewolf

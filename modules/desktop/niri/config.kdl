@@ -48,6 +48,8 @@ binds {
 
     // A distinct app-id so the window-rule below only ever matches this one instance.
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
+    Mod+Ctrl+Shift+B hotkey-overlay-title="System Monitor: btop" { spawn "foot" "--app-id=btop-floating" "-e" "btop"; }
+    Mod+Ctrl+Shift+T hotkey-overlay-title="Typing Practice: ttyper" { spawn "foot" "--app-id=typing-floating" "-e" "ttyper"; }
 }
 
 window-rule {
@@ -77,6 +79,20 @@ window-rule {
     background-effect {
         blur true
     }
+}
+
+window-rule {
+    match app-id="^btop-floating$"
+    open-floating true
+    default-column-width { fixed 900; }
+    default-window-height { fixed 600; }
+}
+
+window-rule {
+    match app-id="^typing-floating$"
+    open-floating true
+    default-column-width { fixed 900; }
+    default-window-height { fixed 600; }
 }
 
 // Show a blurred, dimmed copy of the wallpaper in the overview (Super+O).
