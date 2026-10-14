@@ -2,6 +2,8 @@
 // Includes are positional and later settings win, so everything below overrides it.
 include "base.kdl"
 
+spawn-at-startup "niri-disable-touch"
+
 input {
     // Pointing-device sections are replaced, not merged, so this restates the whole
     // touchpad section from base.kdl and adds dwt and dwtp.

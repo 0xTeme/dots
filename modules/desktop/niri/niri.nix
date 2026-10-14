@@ -1,25 +1,32 @@
 {
-  flake.modules.nixos.niri = { pkgs, ... }: {
-    programs.niri.enable = true;
+  flake.modules.nixos.niri = { pkgs, ... }:
+    let
+      touchOffContent = ''input {\n    touch {\n        off\n    }\n}\n'';
+    in
+    {
+      programs.niri.enable = true;
 
-    # Carried over from the old config: do not force NixOS's default PATH on the niri service.
-    systemd.user.services.niri.enableDefaultPath = false;
+      # Carried over from the old config: do not force NixOS's default PATH on the niri service.
+      systemd.user.services.niri.enableDefaultPath = false;
 
-    # niri has no runtime switch for input devices. This script rewrites toggles.kdl,
-    # which config.kdl includes last, and niri live-reloads it. A non-empty file means
-    # the touchscreen is off. It lives in the system profile so niri's spawn finds it,
-    # the same way it finds foot and noctalia. The state survives reboots.
-    environment.systemPackages = [
-      (pkgs.writeShellScriptBin "niri-toggle-touch" ''
-        f="$HOME/.config/niri/toggles.kdl"
-        if [ -s "$f" ]; then
-          : > "$f"
-          noctalia msg notification-show "Touchscreen enabled"
-        else
-          printf 'input {\n    touch {\n        off\n    }\n}\n' > "$f"
-          noctalia msg notification-show "Touchscreen disabled"
-        fi
-      '')
+      # niri has no runtime switch for input devices. This script rewrites toggles.kdl,
+      # which config.kdl includes last, and niri live-reloads it. A non-empty file means
+      # the touchscreen is off. It lives in the system profile so niri's spawn finds it,
+      # the same way it finds foot and noctalia. The state survives reboots.
+      environment.systemPackages = [
+        (pkgs.writeShellScriptBin "niri-toggle-touch" ''
+          f="$HOME/.config/niri/toggles.kdl"
+          if [ -s "$f" ]; then
+            : > "$f"
+            noctalia msg notification-show "Touchscreen enabled"
+          else
+            printf '${touchOffContent}' > "$f"
+            noctalia msg notification-show "Touchscreen disabled"
+          fi
+        '')
+        (pkgs.writeShellScriptBin "niri-disable-touch" ''
+          printf '${touchOffContent}' > "$HOME/.config/niri/toggles.kdl"
+        '')
       (pkgs.writeShellScriptBin "niri-toggle-look" ''
         arg="$1"
         if [ "$arg" = "gaps" ]; then
