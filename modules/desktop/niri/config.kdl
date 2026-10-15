@@ -60,14 +60,6 @@ window-rule {
     }
 }
 
-window-rule {
-    match app-id="^foot$"
-    opacity 0.85
-    background-effect {
-        blur true
-    }
-}
-
 // Floats rmpc at a size tall enough for square album art plus a header/status strip
 // without squeezing it. Adjust the two fixed numbers once you see it live.
 window-rule {
@@ -75,10 +67,6 @@ window-rule {
     open-floating true
     default-column-width { fixed 912; }
     default-window-height { fixed 742; }
-    opacity 0.85
-    background-effect {
-        blur true
-    }
 }
 
 window-rule {

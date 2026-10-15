@@ -11,6 +11,7 @@
       tree
       wl-clipboard
       brightnessctl
+      playerctl
       smartmontools
     ];
   };
