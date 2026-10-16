@@ -15,6 +15,7 @@
       disks
       security
       base-packages
+      keepassxc
       pavucontrol
       security-tools
       screen-recorder

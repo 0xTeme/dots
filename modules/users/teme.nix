@@ -50,6 +50,7 @@ in
           librewolf
           opencode
           agy
+          nh
         ];
 
         home.stateVersion = "26.05";
