@@ -50,6 +50,10 @@ binds {
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
     Mod+Ctrl+Shift+B hotkey-overlay-title="System Monitor: btop" { spawn "foot" "--app-id=btop-floating" "-e" "btop"; }
     Mod+Ctrl+Shift+T hotkey-overlay-title="Typing Practice: smassh" { spawn "foot" "--app-id=typing-floating" "-e" "smassh"; }
+
+    Mod+Alt+Space hotkey-overlay-title="Media: play or pause" { spawn-sh "playerctl play-pause"; }
+    Mod+Alt+Left hotkey-overlay-title="Media: previous track" { spawn-sh "playerctl previous"; }
+    Mod+Alt+Right hotkey-overlay-title="Media: next track" { spawn-sh "playerctl next"; }
 }
 
 window-rule {
