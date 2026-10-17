@@ -4,22 +4,16 @@
       enable = true;
 
       initExtra = ''
-        # DEBUG fires before every command. Right before the prompt function runs,
-        # $? still holds the status of the command that just finished, so capture it
-        # there, before anything else can overwrite it.
+        # Tracks how long each command takes. __in_prompt_command guards against the
+        # DEBUG trap firing on the prompt's own internal commands (git, sed, etc.),
+        # which would otherwise overwrite the real start time before it's read.
         __cmd_start=""
         __in_prompt_command=0
-        __last_status=0
-        __debug_trap() {
-          if [[ "$BASH_COMMAND" == __prompt_command* ]]; then
-            __last_status=$?
-            return 0
-          fi
-          (( __in_prompt_command )) && return 0
+        __timer_start() {
+          (( __in_prompt_command )) && return
           [[ -z "$__cmd_start" ]] && __cmd_start=$EPOCHREALTIME
-          return 0
         }
-        trap '__debug_trap' DEBUG
+        trap '__timer_start' DEBUG
 
         # One git call gets branch, dirty state, and ahead/behind together, via
         # git's own machine-readable status format, rather than several separate calls.
@@ -47,8 +41,10 @@
         }
 
         __prompt_command() {
+          # This must be the very first line. Even the plain assignment below it
+          # would reset $? to 0 before we got a chance to read the real value.
+          local status=$?
           __in_prompt_command=1
-          local status=$__last_status
 
           local elapsed=""
           if [[ -n "$__cmd_start" ]]; then
