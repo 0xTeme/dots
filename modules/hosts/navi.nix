@@ -21,6 +21,7 @@
       screen-recorder
       docker
       wireless-audit
+      recon
       teme
       niri
       xwayland
