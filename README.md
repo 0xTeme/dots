@@ -16,15 +16,19 @@ Remove something: delete the line in `navi.nix`.
 Files must be tracked by git, or import-tree won't see them.
 
     modules/
+      flake-parts.nix
       hosts/       navi.nix (feature list), navi-hardware.nix
       system/      boot, nix-settings, network, locale, fonts, audio, power, security,
                    base-packages, disks, docker (idle until first use), nix-ld
       users/       teme.nix
-      desktop/     niri/, xwayland, greeter, noctalia, input-method, mime, theme-reload
+      desktop/     niri/, xwayland, greeter, noctalia, input-method, mime, theme-reload,
+                   cursor, file-picker, gtk-dark
       apps/        foot, librewolf, telegram, libreoffice, imv, zathura, mpv, glow,
-                   mpd, rmpc, screen-recorder
-      security/    security-tools (catalog, nothing enabled by default), wireless-audit
-      programs/    bash, fzf, fastfetch, yazi, xdg-dirs, git, agy, opencode, nixvim/
+                   mpd, rmpc, screen-recorder, btop, keepassxc, mpd-mpris,
+                   pavucontrol, typing
+      security/    security-tools (catalog, nothing enabled by default), wireless-audit,
+                   recon
+      programs/    bash, fzf, fastfetch, yazi, xdg-dirs, git, agy, opencode, nh, nixvim/
                    (editor, including a full IDE layer: dashboard, file tree,
                    bufferline, Sixel image preview)
 
