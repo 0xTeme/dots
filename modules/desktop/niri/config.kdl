@@ -87,6 +87,13 @@ window-rule {
     default-window-height { fixed 600; }
 }
 
+window-rule {
+    match app-id="^file-picker$"
+    open-floating true
+    default-column-width { fixed 900; }
+    default-window-height { fixed 600; }
+}
+
 // Show a blurred, dimmed copy of the wallpaper in the overview (Super+O).
 // Noctalia's docs call this layer "noctalia-backdrop" in v5 (was "noctalia-overview" in v4).
 layer-rule {

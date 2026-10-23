@@ -25,6 +25,7 @@
       teme
       niri
       xwayland
+      file-picker
       greeter
       noctalia
       input-method

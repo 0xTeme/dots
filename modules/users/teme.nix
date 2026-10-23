@@ -46,6 +46,7 @@ in
           btop
           typing
           theme-reload
+          file-picker
           gtk-dark
           librewolf
           opencode
