@@ -46,6 +46,9 @@ binds {
     Mod+Ctrl+B hotkey-overlay-title="Toggle Blur" { spawn "niri-toggle-look" "blur"; }
     Mod+Ctrl+A hotkey-overlay-title="Toggle Transparency" { spawn "niri-toggle-look" "transparency"; }
 
+    // Files: Nautilus (GNOME Files). Opens a new window each time.
+    Mod+N hotkey-overlay-title="Files: Nautilus" { spawn "nautilus" "--new-window"; }
+
     // A distinct app-id so the window-rule below only ever matches this one instance.
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
     Mod+Ctrl+Shift+B hotkey-overlay-title="System Monitor: btop" { spawn "foot" "--app-id=btop-floating" "-e" "btop"; }
