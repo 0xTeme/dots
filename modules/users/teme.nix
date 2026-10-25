@@ -46,6 +46,7 @@ in
           btop
           typing
           theme-reload
+          gtk-reload
           librewolf
           opencode
           agy
