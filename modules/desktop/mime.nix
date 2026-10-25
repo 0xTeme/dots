@@ -9,7 +9,8 @@
         enable = true;
 
         defaultApplications =
-          handle "imv.desktop" [
+          handle "org.gnome.Nautilus.desktop" [ "inode/directory" ]
+          // handle "imv.desktop" [
             "image/png"
             "image/jpeg"
             "image/gif"
