@@ -1,16 +1,15 @@
 {
   # Makes running GTK apps reload after Noctalia rewrites its palette. GTK caches the
-  # theme and color scheme by name, so it only rereads them when the value changes.
-  # Each value is reset and restored, which triggers that reload. The icon theme is
-  # deliberately not bounced: resetting it to Adwaita is visible as a flicker, and
-  # Noctalia's Papirus hook recolors the folders in place, so icons may need a relaunch.
+  # theme, icons and color scheme by name, so it only rereads them when the name changes.
+  # Each value is switched to a neighbor name and back. The icons switch between Papirus
+  # names, both of which Noctalia's hook recolors, so the stock Adwaita icons never show.
   flake.modules.homeManager.gtk-reload = { pkgs, ... }:
     let
       reload = pkgs.writeShellScript "gtk-reload" ''
         set -eu
         dconf=${pkgs.dconf}/bin/dconf
 
-        # Let Noctalia's hooks finish writing the palette before reloading.
+        # Let Noctalia's hooks finish writing the palette and recoloring the icons.
         sleep 2
 
         bounce() {
@@ -23,8 +22,13 @@
           $dconf write "$key" "$cur"
         }
 
-        bounce /org/gnome/desktop/interface/gtk-theme "'Adwaita'"
+        icons=$($dconf read /org/gnome/desktop/interface/icon-theme)
+        case "$icons" in
+          *Papirus*) bounce /org/gnome/desktop/interface/icon-theme "'Papirus'" ;;
+        esac
+
         bounce /org/gnome/desktop/interface/color-scheme "'default'"
+        bounce /org/gnome/desktop/interface/gtk-theme "'Adwaita'"
       '';
     in
     {
@@ -38,7 +42,7 @@
       };
 
       systemd.user.services.gtk-reload = {
-        Unit.Description = "Make running GTK apps reload Noctalia's palette";
+        Unit.Description = "Make running GTK apps reload Noctalia's palette and icons";
         Service = {
           Type = "oneshot";
           ExecStart = "${reload}";
