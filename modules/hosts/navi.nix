@@ -36,6 +36,7 @@
       file-manager
       qt
       gtk-dark
+      localsend
     ];
   };
 
