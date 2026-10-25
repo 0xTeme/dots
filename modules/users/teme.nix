@@ -52,6 +52,7 @@ in
           agy
           nh
           udiskie
+          qt
         ];
 
         home.stateVersion = "26.05";
