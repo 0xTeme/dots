@@ -1,9 +1,11 @@
+{ pkgs, ... }:
 {
-  # Thunar: a GTK3 file manager. Phones (MTP) and USB drives show in its sidebar
-  # through gvfs, thumbnails come from tumbler, and bulk rename is built in.
+  # Nautilus (GNOME Files): GTK 4 on libadwaita, the toolkit Noctalia's GTK 4 template
+  # targets, so the palette applies directly. gvfs provides MTP, which is how phones
+  # show up, and dconf is what GNOME apps read their settings from.
   flake.modules.nixos.file-manager = {
-    programs.thunar.enable = true;
+    programs.dconf.enable = true;
     services.gvfs.enable = true;
-    services.tumbler.enable = true;
+    environment.systemPackages = [ pkgs.nautilus ];
   };
 }
