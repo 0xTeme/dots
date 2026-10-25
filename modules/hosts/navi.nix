@@ -33,6 +33,8 @@
       telegram
       libreoffice
       nix-ld
+      file-manager
+      qt
     ];
   };
 

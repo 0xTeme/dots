@@ -51,6 +51,7 @@ in
           opencode
           agy
           nh
+          udiskie
         ];
 
         home.stateVersion = "26.05";
