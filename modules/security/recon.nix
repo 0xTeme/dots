@@ -1,10 +1,14 @@
 {
-  # Reconnaissance tools: port scanning, subdomain enumeration and HTTP probing.
-  # Promoted out of the security-tools.nix catalog once actually used (nmap came
-  # over after the CTF), same pattern as wireless-audit.nix.
+  # Reconnaissance tools for coursework: port scanning, DNS lookup, subdomain enumeration,
+  # HTTP probing, content discovery and web fingerprinting. Promoted from the catalog once
+  # they were in use, same pattern as wireless-audit.nix.
   flake.modules.nixos.recon = { pkgs, ... }: {
     environment.systemPackages = with pkgs; [
       nmap
+      dnsutils # provides dig
+      whatweb
+      ffuf
+      katana
       subfinder
       assetfinder
       findomain
