@@ -1,13 +1,13 @@
 {
-  # GTK3 apps only switch to dark when the active theme has a dark variant. Naming
-  # Adwaita-dark sets that theme; the preference flags reinforce it. Noctalia supplies
-  # the colors through gtk.css, which is still Noctalia-owned and not touched here.
+  # GTK 3 theme for Noctalia. Noctalia's GTK 3 template writes libadwaita color names
+  # (window_bg_color and friends), which adw-gtk3 uses. Adwaita-dark uses older names,
+  # so the palette never reached GTK 3 widgets. Noctalia still owns gtk.css.
   flake.modules.homeManager.gtk-dark = { pkgs, ... }: {
     gtk = {
       enable = true;
       theme = {
-        name = "Adwaita-dark";
-        package = pkgs.gnome-themes-extra;
+        name = "adw-gtk3-dark";
+        package = pkgs.adw-gtk3;
       };
       gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
       gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
