@@ -47,6 +47,7 @@ in
           typing
           theme-reload
           gtk-reload
+          gtk-square
           librewolf
           opencode
           agy
