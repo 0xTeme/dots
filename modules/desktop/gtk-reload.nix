@@ -1,8 +1,8 @@
 {
   # Makes running GTK apps reload after Noctalia rewrites its palette or recolors icons.
   # GTK caches theme, icon and color-scheme values by name, so each one is switched and
-  # restored in one step. The script watches the palette files and Papirus folders, and
-  # reloads as soon as they stop changing, instead of waiting a fixed time.
+  # restored. The restore runs on any exit, including a signal, so an interrupted run
+  # can't leave a reset value behind.
   flake.modules.homeManager.gtk-reload = { pkgs, ... }:
     let
       reload = pkgs.writeShellScript "gtk-reload" ''
@@ -24,8 +24,8 @@
             "$HOME"/.local/share/icons/Papirus* 2>/dev/null | tr '\n' ' '
         }
 
-        # Short grace period for Noctalia's hooks to start, then wait until the snapshot
-        # has been unchanged for half a second. Capped at about ten seconds.
+        # Wait for Noctalia's hooks to start, then until the snapshot has been unchanged
+        # for half a second. Capped at about ten seconds.
         $sleep 0.2
         prev=""
         stable=0
@@ -41,20 +41,31 @@
           $sleep 0.25
         done
 
+        # Read the real values before anything is changed.
         cs=$($dconf read /org/gnome/desktop/interface/color-scheme)
         gt=$($dconf read /org/gnome/desktop/interface/gtk-theme)
         ic=$($dconf read /org/gnome/desktop/interface/icon-theme)
 
-        # Switch all three to a neighbor value at once, then restore them together.
+        # Restores the real values exactly once, on normal exit or on any signal.
+        restored=0
+        restore() {
+          if [ "$restored" = 1 ]; then return 0; fi
+          restored=1
+          if [ -n "$cs" ]; then $dconf write /org/gnome/desktop/interface/color-scheme "$cs"; fi
+          if [ -n "$gt" ]; then $dconf write /org/gnome/desktop/interface/gtk-theme "$gt"; fi
+          case "$ic" in
+            *Papirus*) $dconf write /org/gnome/desktop/interface/icon-theme "$ic" ;;
+          esac
+        }
+        trap restore EXIT INT TERM
+
+        # Switch all three to a neighbor value at once. The restore then puts them back.
         $dconf write /org/gnome/desktop/interface/color-scheme "'default'"
         $dconf write /org/gnome/desktop/interface/gtk-theme "'Adwaita'"
         case "$ic" in *Papirus*) $dconf write /org/gnome/desktop/interface/icon-theme "'Papirus'" ;; esac
 
         $sleep 0.1
-
-        if [ -n "$cs" ]; then $dconf write /org/gnome/desktop/interface/color-scheme "$cs"; fi
-        if [ -n "$gt" ]; then $dconf write /org/gnome/desktop/interface/gtk-theme "$gt"; fi
-        case "$ic" in *Papirus*) $dconf write /org/gnome/desktop/interface/icon-theme "$ic" ;; esac
+        restore
       '';
     in
     {
