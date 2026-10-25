@@ -1,18 +1,12 @@
 {
-  # GTK 3 theme for Noctalia. Noctalia's GTK 3 template writes libadwaita color names
-  # (window_bg_color and friends), which adw-gtk3 uses. Adwaita-dark uses older names,
-  # so the palette never reached GTK 3 widgets. Noctalia still owns gtk.css.
-  flake.modules.homeManager.gtk-dark = { pkgs, ... }: {
-    gtk = {
-      enable = true;
-      theme = {
-        name = "adw-gtk3-dark";
-        package = pkgs.adw-gtk3;
-      };
-      gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
-      gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
-    };
-
-    dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+  # Installs the GTK themes and icons. Nix does not select them. Noctalia's GTK script
+  # picks adw-gtk3 or adw-gtk3-dark and sets the color scheme on every light or dark
+  # change, and the Papirus template recolors folder icons to match the palette. If Nix
+  # also pinned a theme, the two would overwrite each other.
+  flake.modules.nixos.gtk-dark = { pkgs, ... }: {
+    environment.systemPackages = [
+      pkgs.adw-gtk3
+      pkgs.papirus-icon-theme
+    ];
   };
 }

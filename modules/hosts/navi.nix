@@ -35,6 +35,7 @@
       nix-ld
       file-manager
       qt
+      gtk-dark
     ];
   };
 

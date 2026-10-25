@@ -46,7 +46,6 @@ in
           btop
           typing
           theme-reload
-          gtk-dark
           librewolf
           opencode
           agy
