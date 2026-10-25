@@ -1,17 +1,17 @@
 {
   # A browsing catalog, nothing here is active. Uncomment a line, rebuild, try it.
   # Once you're actually using something regularly, give it its own file, see
-  # wireless-audit.nix for an example of something promoted out of this list.
+  # wireless-audit.nix and recon.nix for examples of tools promoted out of this list.
   flake.modules.nixos.security-tools = { pkgs, ... }: {
     environment.systemPackages = with pkgs; [
       # -- Network / wireless --
-      # nmap
+      # nmap               # promoted, now lives in recon.nix
       # wireshark
       # bettercap
       # wifite2
 
       # -- Web application testing --
-      # burpsuite          # Community Edition by default, see programs/git.nix for Pro
+      # burpsuite          # Community Edition by default; Pro features need a paid license
       # sqlmap
       # nikto
       # gobuster
