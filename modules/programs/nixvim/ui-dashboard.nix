@@ -1,7 +1,8 @@
 { lib, ... }:
 let
-  # The splash image, copied into the Nix store at build time. Lua gets its store path.
-  image = ./assets/lain-the-thinker.png;
+  # The default splash image, in the repo. To change it, replace splash.png here and rebuild,
+  # or put any image at ~/.local/share/navi/splash.png and reopen Neovim, with no rebuild.
+  image = ./assets/splash.png;
 
   # Rows shared by the image and the NAVI header. Only one of them shows at a time.
   imageRows = 16;
@@ -84,7 +85,11 @@ in
     # Draws the splash image on the dashboard window itself, and swaps it with the NAVI
     # header. The on/off choice is saved in the state directory.
     extraConfigLuaPost = lib.mkAfter ''
-      local img_path = "${image}"
+      -- A user image wins over the repo default, so it can be swapped without a rebuild.
+      local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
+      local user_img = data_home .. "/navi/splash.png"
+      local img_path = (vim.uv.fs_stat(user_img) and user_img) or "${image}"
+
       local state_file = vim.fn.stdpath("state") .. "/navi-splash-image"
       local rows = ${toString imageRows}
       local bottom_gap = ${toString headerBottomGap}
