@@ -1,11 +1,14 @@
 { lib, ... }:
 {
-  # Bottom bar and tab row, colored from the palette's real highlight groups, the same way
-  # Omarchy and LazyVim theme lualine: each mode's badge uses its role's exact color, with
-  # the editor background as the text color. Lualine needs "#rrggbb" strings, so Neovim's
-  # numeric colors are converted at the point of use. The palette reload rewrites
-  # matugen.lua without firing ColorScheme, so a file watcher on that file runs the same
-  # update. mkAfter runs this after the palette loads in nixvim.nix.
+  # Bottom bar and tab row, colored from the palette's real highlight groups, the way Omarchy
+  # and LazyVim theme lualine: each mode's badge uses its role's exact color, with the editor
+  # background as the text. Lualine needs "#rrggbb" strings, so Neovim's numeric colors are
+  # converted at the point of use.
+  #
+  # The palette reload rewrites matugen.lua, then applies the colors a moment later. Reading
+  # too early gives the previous palette, so after a change the bar checks the real colors
+  # and applies only once they differ from what it last drew. It retries for a few seconds,
+  # so it doesn't depend on the exact timing. mkAfter runs this after the palette loads.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     plugins.lualine.enable = true;
 
@@ -50,6 +53,15 @@
         }
       end
 
+      -- The colors this bar was last drawn with. A change in any of them means a new palette.
+      local last = nil
+
+      local function signature()
+        local n = hl("Normal")
+        local k = hl("Keyword")
+        return table.concat({ n.bg or 0, n.fg or 0, k.fg or 0, hl("String").fg or 0, hl("Comment").fg or 0 }, ":")
+      end
+
       local function apply()
         local normal = hl("Normal")
         local comment = hl("Comment")
@@ -66,23 +78,40 @@
 
         -- Lualine's setup replaces the whole config, so the sections are repeated here.
         local ok, lualine = pcall(require, "lualine")
-        if not ok then return end
-        lualine.setup({
-          options = {
-            theme = palette(),
-            globalstatus = true,
-            component_separators = { left = "│", right = "│" },
-            section_separators = { left = "", right = "" },
-          },
-          sections = {
-            lualine_a = { "mode" },
-            lualine_b = { "branch", "diff" },
-            lualine_c = { "filename" },
-            lualine_x = { "diagnostics", "filetype" },
-            lualine_y = { "progress" },
-            lualine_z = { "location" },
-          },
-        })
+        if ok then
+          lualine.setup({
+            options = {
+              theme = palette(),
+              globalstatus = true,
+              component_separators = { left = "│", right = "│" },
+              section_separators = { left = "", right = "" },
+            },
+            sections = {
+              lualine_a = { "mode" },
+              lualine_b = { "branch", "diff" },
+              lualine_c = { "filename" },
+              lualine_x = { "diagnostics", "filetype" },
+              lualine_y = { "progress" },
+              lualine_z = { "location" },
+            },
+          })
+        end
+
+        last = signature()
+      end
+
+      -- Applies only when the real colors have changed since the last draw.
+      local function sync()
+        if signature() ~= last then
+          apply()
+        end
+      end
+
+      -- A palette change: check now, then keep checking for a few seconds until it lands.
+      local function on_palette_change()
+        for _, delay in ipairs({ 0, 150, 400, 800, 1500, 2500 }) do
+          vim.defer_fn(sync, delay)
+        end
       end
 
       vim.api.nvim_create_autocmd("ColorScheme", { callback = apply })
@@ -91,9 +120,7 @@
       if watcher then
         watcher:start(vim.fn.stdpath("config") .. "/lua", {}, function(err, filename)
           if err or filename ~= "matugen.lua" then return end
-          vim.schedule(function()
-            vim.defer_fn(apply, 150)
-          end)
+          vim.schedule(on_palette_change)
         end)
       end
 
