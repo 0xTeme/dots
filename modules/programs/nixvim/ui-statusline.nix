@@ -1,10 +1,10 @@
 { lib, ... }:
 {
-  # Bottom bar and tab row, colored from the editor's highlight groups. Lualine builds its
-  # own per-mode groups and needs colors as "#rrggbb" strings. Neovim returns colors as
-  # numbers, so every value is converted at the point it goes into the lualine theme.
-  # mkAfter runs this after the palette loads, and the ColorScheme autocommand keeps it
-  # in step on every change.
+  # Bottom bar and tab row, colored from the editor's highlight groups. Lualine needs
+  # "#rrggbb" strings, so Neovim's numeric colors are converted at the point of use.
+  # The palette reload rewrites matugen.lua without firing ColorScheme, so a libuv file
+  # watcher on that file triggers the same update. mkAfter runs this after the palette
+  # loads in nixvim.nix.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     plugins.lualine.enable = true;
 
@@ -52,15 +52,18 @@
       end
 
       local function apply()
-        -- Tab row and bar background match Normal.
         local normal = hl("Normal")
         local comment = hl("Comment")
-        local accent = hl("Keyword")
+        local accent_hl = hl("Keyword")
+
+        -- Tab row and bufferline match the editor background.
         vim.api.nvim_set_hl(0, "StatusLine", { fg = normal.fg, bg = normal.bg })
         vim.api.nvim_set_hl(0, "StatusLineNC", { fg = comment.fg, bg = normal.bg })
         vim.api.nvim_set_hl(0, "TabLine", { fg = comment.fg, bg = normal.bg })
         vim.api.nvim_set_hl(0, "TabLineFill", { fg = comment.fg, bg = normal.bg })
-        vim.api.nvim_set_hl(0, "TabLineSel", { fg = accent.fg, bg = normal.bg, bold = true })
+        vim.api.nvim_set_hl(0, "TabLineSel", { fg = accent_hl.fg, bg = normal.bg, bold = true })
+        vim.api.nvim_set_hl(0, "BufferLineFill", { fg = comment.fg, bg = normal.bg })
+        vim.api.nvim_set_hl(0, "BufferLineBackground", { fg = comment.fg, bg = normal.bg })
 
         -- Lualine's setup replaces the whole config, so the sections are repeated here.
         local ok, lualine = pcall(require, "lualine")
@@ -83,7 +86,20 @@
         })
       end
 
+      -- Runs on any colorscheme change, and on every palette rewrite. The palette writes
+      -- matugen.lua, so watching that file catches reloads that skip ColorScheme.
       vim.api.nvim_create_autocmd("ColorScheme", { callback = apply })
+
+      local watcher = vim.uv.new_fs_event()
+      if watcher then
+        watcher:start(vim.fn.stdpath("config") .. "/lua", {}, function(err, filename)
+          if err or filename ~= "matugen.lua" then return end
+          vim.schedule(function()
+            vim.defer_fn(apply, 150)
+          end)
+        end)
+      end
+
       apply()
     '';
   };
