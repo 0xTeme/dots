@@ -83,7 +83,8 @@ in
     };
 
     # Draws the splash image on the dashboard window itself, and swaps it with the NAVI
-    # header. The on/off choice is saved in the state directory.
+    # header. The image is recreated on every redraw event, so a theme change or a focus
+    # change can't leave it missing. The on/off choice is saved in the state directory.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -152,24 +153,17 @@ in
         return nil, nil
       end
 
+      -- Clears the old image and draws a fresh one at the dashboard's current width.
       local function show()
+        clear_shown()
         local win, buf = dashboard()
-        if not win or not enabled() then
-          clear_shown()
-          return
-        end
+        if not win or not enabled() then return end
+
         local ok, api = pcall(require, "image")
         if not ok then return end
 
         local width, height = 36, rows
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
-
-        if shown then
-          pcall(function()
-            shown:render({ x = col, y = 2, width = width, height = height })
-          end)
-          return
-        end
 
         shown = api.from_file(img_path, {
           window = win,
@@ -191,7 +185,7 @@ in
       end
 
       vim.api.nvim_create_autocmd(
-        { "FileType", "BufWinEnter", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
+        { "ColorScheme", "FileType", "BufWinEnter", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
         { callback = function() vim.defer_fn(show, 30) end }
       )
     '';

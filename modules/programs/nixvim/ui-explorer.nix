@@ -15,7 +15,8 @@
           highlight_git = "name";
           highlight_opened_files = "name";
           icons = {
-            padding = " ";
+            # Two spaces after each icon, so the glyphs read as larger and separate.
+            padding = "  ";
             show = {
               file = true;
               folder = true;
@@ -59,7 +60,7 @@
         set(0, "NvimTreeRootFolder", { link = "Keyword", bold = true })
         set(0, "NvimTreeOpenedFolderName", { link = "Keyword", bold = true })
         set(0, "NvimTreeFolderName", { link = "Keyword" })
-        set(0, "NvimTreeFolderIcon", { link = "Keyword" })
+        set(0, "NvimTreeFolderIcon", { link = "Keyword", bold = true })
         set(0, "NvimTreeFileName", { link = "Normal" })
         set(0, "NvimTreeIndentMarker", { link = "Comment" })
         set(0, "NvimTreeWinSeparator", { link = "Comment" })
