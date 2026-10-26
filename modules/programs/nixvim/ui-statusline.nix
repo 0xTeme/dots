@@ -7,6 +7,9 @@
   # full accent. The palette reload rewrites matugen.lua without firing ColorScheme, so
   # a file watcher on that file triggers the same update. mkAfter runs this after the
   # palette loads in nixvim.nix.
+  #
+  # Neovim runs LuaJIT, which has no bit-shift operators, so channels are split with
+  # plain division and modulo.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     plugins.lualine.enable = true;
 
@@ -23,16 +26,21 @@
         return string.format("#%06x", n)
       end
 
+      -- Split a color number into red, green and blue channels.
+      local function channels(n)
+        return math.floor(n / 65536) % 256, math.floor(n / 256) % 256, n % 256
+      end
+
       -- Mix two colors given as numbers. t is the weight of a.
       local function blend(a, b, t)
         if a == nil then return b end
         if b == nil then return a end
-        local function mix(shift)
-          local x = (a >> shift) & 0xff
-          local y = (b >> shift) & 0xff
+        local ar, ag, ab = channels(a)
+        local br, bg, bb = channels(b)
+        local function mix(x, y)
           return math.floor(x * t + y * (1 - t) + 0.5)
         end
-        return mix(16) * 65536 + mix(8) * 256 + mix(0)
+        return mix(ar, br) * 65536 + mix(ag, bg) * 256 + mix(ab, bb)
       end
 
       local function mode(color, bg, fg, cbg)
