@@ -82,10 +82,10 @@ in
       ];
     };
 
-    # One image object lives for as long as the dashboard is open. It is moved in place when
-    # the dashboard's column changes, and it is only recreated on a theme change, a fresh
-    # dashboard, a different window or buffer, or a toggle. Focus changes that don't move the
-    # dashboard cause no redraw at all.
+    # One image object lives while the dashboard is open. It moves in place when the
+    # dashboard's column changes, and it's recreated on a palette change, a fresh dashboard,
+    # a toggle, or a different window or buffer. A palette change places the image several
+    # times, so the last placement lands after alpha has finished its own redraw.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -158,7 +158,7 @@ in
         return nil, nil
       end
 
-      -- Brings the image in line with the screen. Only redraws when something changed.
+      -- Brings the image in line with the screen. Moves it when only the column changed.
       local function show(force)
         local win, buf = dashboard()
         if not win or not enabled() then
@@ -172,7 +172,6 @@ in
 
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
 
-        -- Same window and buffer as before: move the image only if its column changed.
         if current and current.win == win and current.buf == buf then
           if current.x ~= col then
             current.x = col
@@ -183,7 +182,6 @@ in
           return
         end
 
-        -- A different window or buffer, or nothing drawn yet: start fresh.
         destroy()
         local img = api.from_file(img_path, {
           window = win,
@@ -199,18 +197,21 @@ in
         end
       end
 
-      -- Debounce: a burst of events runs one call, after the last event. A forced call
-      -- recreates the image, which is only needed on a theme change or a fresh dashboard.
+      -- Debounce for ordinary window events: a burst runs one call after the last event.
       local timer = vim.uv.new_timer()
-      local pending_force = false
-      local function schedule(force)
-        pending_force = pending_force or force
+      local function schedule()
         timer:stop()
-        timer:start(60, 0, vim.schedule_wrap(function()
-          local f = pending_force
-          pending_force = false
-          show(f)
-        end))
+        timer:start(60, 0, vim.schedule_wrap(function() show(false) end))
+      end
+
+      -- After a palette change, place the image at several delays. Alpha redraws on its own
+      -- schedule, and any redraw clears an image placed just before it. The last placement
+      -- lands after that redraw.
+      local function palette_refresh()
+        destroy()
+        for _, delay in ipairs({ 0, 150, 400, 800, 1500, 2500 }) do
+          vim.defer_fn(function() show(true) end, delay)
+        end
       end
 
       -- Called by the "Toggle image" button. Swaps the image and the header, then redraws.
@@ -218,16 +219,30 @@ in
         save(not enabled())
         destroy()
         pcall(function() require("alpha").redraw() end)
-        schedule(true)
+        palette_refresh()
       end
 
-      -- Theme changes and fresh dashboards recreate the image. Everything else only moves it.
-      vim.api.nvim_create_autocmd({ "ColorScheme", "FileType" }, {
-        callback = function() schedule(true) end,
+      -- A Neovim colorscheme change.
+      vim.api.nvim_create_autocmd("ColorScheme", { callback = palette_refresh })
+
+      -- The palette reload rewrites matugen.lua. It can skip the ColorScheme event, so the
+      -- file is watched too.
+      local watcher = vim.uv.new_fs_event()
+      if watcher then
+        watcher:start(vim.fn.stdpath("config") .. "/lua", {}, function(err, filename)
+          if err or filename ~= "matugen.lua" then return end
+          vim.schedule(palette_refresh)
+        end)
+      end
+
+      vim.api.nvim_create_autocmd("FileType", {
+        callback = function(args)
+          if vim.bo[args.buf].filetype == "alpha" then palette_refresh() end
+        end,
       })
       vim.api.nvim_create_autocmd(
         { "BufWinEnter", "BufWinLeave", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
-        { callback = function() schedule(false) end }
+        { callback = schedule }
       )
     '';
   };
