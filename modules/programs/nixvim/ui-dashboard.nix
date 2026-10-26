@@ -11,6 +11,10 @@ let
   # header down, closer to the list. A larger number moves it up.
   headerBottomGap = 2;
 
+  # A Nerd Font glyph from its hex code. Nix strings don't read \u escapes, but JSON does,
+  # so the character is built from a JSON string. The file itself stays plain ASCII.
+  icon = hex: builtins.fromJSON ''"\u${hex}"'';
+
   # letter: the single key shown and bound. label: the text, with its icon. lua: the action.
   button = letter: label: lua: {
     type = "button";
@@ -61,12 +65,12 @@ in
         {
           type = "group";
           val = [
-            (button "e" " New file" "vim.cmd('enew')")
-            (button "f" " Find file" "require('fzf-lua').files()")
-            (button "r" " Recent files" "require('fzf-lua').oldfiles()")
-            (button "g" " Find word" "require('fzf-lua').live_grep()")
-            (button "i" " Toggle image" "NaviToggleImage()")
-            (button "q" " Quit" "vim.cmd('qa')")
+            (button "e" "${icon "f15b"}  New file" "vim.cmd('enew')")
+            (button "f" "${icon "f002"}  Find file" "require('fzf-lua').files()")
+            (button "r" "${icon "f1da"}  Recent files" "require('fzf-lua').oldfiles()")
+            (button "g" "${icon "f15c"}  Find word" "require('fzf-lua').live_grep()")
+            (button "i" "${icon "f03e"}  Toggle image" "NaviToggleImage()")
+            (button "q" "${icon "f011"}  Quit" "vim.cmd('qa')")
           ];
           opts.spacing = 1;
         }
