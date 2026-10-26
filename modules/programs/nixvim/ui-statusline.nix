@@ -2,13 +2,17 @@
 {
   # Bottom bar and tab row, colored from the editor's highlight groups. Lualine needs
   # "#rrggbb" strings, so Neovim's numeric colors are converted at the point of use.
-  # The palette reload rewrites matugen.lua without firing ColorScheme, so a libuv file
-  # watcher on that file triggers the same update. mkAfter runs this after the palette
-  # loads in nixvim.nix.
+  # Accents are blended toward the background, so each extraction mode keeps its hue
+  # while the bar stays calm. Tune `strength` to taste: 0 is the background, 1 is the
+  # full accent. The palette reload rewrites matugen.lua without firing ColorScheme, so
+  # a file watcher on that file triggers the same update. mkAfter runs this after the
+  # palette loads in nixvim.nix.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     plugins.lualine.enable = true;
 
     extraConfigLuaPost = lib.mkAfter ''
+      local strength = 0.45
+
       local function hl(name)
         return vim.api.nvim_get_hl(0, { name = name, link = false })
       end
@@ -19,14 +23,26 @@
         return string.format("#%06x", n)
       end
 
+      -- Mix two colors given as numbers. t is the weight of a.
+      local function blend(a, b, t)
+        if a == nil then return b end
+        if b == nil then return a end
+        local function mix(shift)
+          local x = (a >> shift) & 0xff
+          local y = (b >> shift) & 0xff
+          return math.floor(x * t + y * (1 - t) + 0.5)
+        end
+        return mix(16) * 65536 + mix(8) * 256 + mix(0)
+      end
+
       local function mode(color, bg, fg, cbg)
         return {
-          a = { fg = hex(bg), bg = hex(color), gui = "bold" },
+          a = { fg = hex(fg), bg = hex(color), gui = "bold" },
           b = { fg = hex(fg), bg = hex(cbg) },
           c = { fg = hex(fg), bg = hex(bg) },
           x = { fg = hex(hl("Comment").fg), bg = hex(bg) },
           y = { fg = hex(fg), bg = hex(cbg) },
-          z = { fg = hex(bg), bg = hex(color), gui = "bold" },
+          z = { fg = hex(fg), bg = hex(color), gui = "bold" },
         }
       end
 
@@ -37,16 +53,18 @@
         local cbg = hl("CursorLine").bg or bg
         local dim = { fg = hex(hl("Comment").fg), bg = hex(bg) }
 
-        local function accent(name)
-          return hl(name).fg or hl("Keyword").fg
+        -- The accent for a highlight role, toned down toward the background.
+        local function calm(name)
+          local c = hl(name).fg or hl("Keyword").fg
+          return blend(c, bg, strength)
         end
 
         return {
-          normal = mode(accent("Keyword"), bg, fg, cbg),
-          insert = mode(accent("String"), bg, fg, cbg),
-          visual = mode(accent("Constant"), bg, fg, cbg),
-          replace = mode(accent("DiagnosticError"), bg, fg, cbg),
-          command = mode(accent("Type"), bg, fg, cbg),
+          normal = mode(calm("Keyword"), bg, fg, cbg),
+          insert = mode(calm("String"), bg, fg, cbg),
+          visual = mode(calm("Constant"), bg, fg, cbg),
+          replace = mode(calm("DiagnosticError"), bg, fg, cbg),
+          command = mode(calm("Type"), bg, fg, cbg),
           inactive = { a = dim, b = dim, c = dim, x = dim, y = dim, z = dim },
         }
       end
@@ -86,8 +104,6 @@
         })
       end
 
-      -- Runs on any colorscheme change, and on every palette rewrite. The palette writes
-      -- matugen.lua, so watching that file catches reloads that skip ColorScheme.
       vim.api.nvim_create_autocmd("ColorScheme", { callback = apply })
 
       local watcher = vim.uv.new_fs_event()
