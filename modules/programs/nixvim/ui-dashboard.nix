@@ -82,10 +82,10 @@ in
       ];
     };
 
-    # Draws one splash image on the dashboard. Each redraw is debounced, so a burst of
-    # resize and window events runs a single draw after things settle. Every draw first
-    # clears all rendered images with the plugin's module-level clear, so the old image
-    # is removed before the new one is placed.
+    # One image object lives for as long as the dashboard is open. It is moved in place when
+    # the dashboard's column changes, and it is only recreated on a theme change, a fresh
+    # dashboard, a different window or buffer, or a toggle. Focus changes that don't move the
+    # dashboard cause no redraw at all.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -95,7 +95,10 @@ in
       local state_file = vim.fn.stdpath("state") .. "/navi-splash-image"
       local rows = ${toString imageRows}
       local bottom_gap = ${toString headerBottomGap}
-      local shown = false
+      local width = 36
+
+      -- The one image this module owns: { img, win, buf, x }, or nil.
+      local current = nil
 
       local header = {
         "███╗   ██╗ █████╗ ██╗   ██╗██╗",
@@ -136,13 +139,12 @@ in
         return out
       end
 
-      -- Removes every rendered image through the plugin's module-level clear.
-      local function clear_image()
-        local ok, api = pcall(require, "image")
-        if ok and api.clear then
-          pcall(api.clear)
+      -- Removes the one image this module owns. Safe when there is none.
+      local function destroy()
+        if current then
+          pcall(function() current.img:clear() end)
         end
-        shown = false
+        current = nil
       end
 
       -- Finds the dashboard window, wherever focus is.
@@ -156,56 +158,76 @@ in
         return nil, nil
       end
 
-      -- One draw: clear, then place a single image if the dashboard is open and enabled.
-      local function show()
+      -- Brings the image in line with the screen. Only redraws when something changed.
+      local function show(force)
         local win, buf = dashboard()
-        if not win then
-          -- The dashboard is gone. Remove our image only if we were the ones showing it.
-          if shown then clear_image() end
+        if not win or not enabled() then
+          destroy()
           return
         end
-
-        clear_image()
-        if not enabled() then return end
+        if force then destroy() end
 
         local ok, api = pcall(require, "image")
         if not ok then return end
 
-        local width, height = 36, rows
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
 
+        -- Same window and buffer as before: move the image only if its column changed.
+        if current and current.win == win and current.buf == buf then
+          if current.x ~= col then
+            current.x = col
+            pcall(function()
+              current.img:render({ x = col, y = 2, width = width, height = rows })
+            end)
+          end
+          return
+        end
+
+        -- A different window or buffer, or nothing drawn yet: start fresh.
+        destroy()
         local img = api.from_file(img_path, {
           window = win,
           buffer = buf,
           x = col,
           y = 2,
           width = width,
-          height = height,
+          height = rows,
         })
         if img then
           pcall(function() img:render() end)
-          shown = true
+          current = { img = img, win = win, buf = buf, x = col }
         end
       end
 
-      -- Debounce: any number of events inside the window run one draw, after the last one.
+      -- Debounce: a burst of events runs one call, after the last event. A forced call
+      -- recreates the image, which is only needed on a theme change or a fresh dashboard.
       local timer = vim.uv.new_timer()
-      local function schedule_show()
+      local pending_force = false
+      local function schedule(force)
+        pending_force = pending_force or force
         timer:stop()
-        timer:start(120, 0, vim.schedule_wrap(show))
+        timer:start(60, 0, vim.schedule_wrap(function()
+          local f = pending_force
+          pending_force = false
+          show(f)
+        end))
       end
 
       -- Called by the "Toggle image" button. Swaps the image and the header, then redraws.
       function NaviToggleImage()
         save(not enabled())
-        clear_image()
+        destroy()
         pcall(function() require("alpha").redraw() end)
-        schedule_show()
+        schedule(true)
       end
 
+      -- Theme changes and fresh dashboards recreate the image. Everything else only moves it.
+      vim.api.nvim_create_autocmd({ "ColorScheme", "FileType" }, {
+        callback = function() schedule(true) end,
+      })
       vim.api.nvim_create_autocmd(
-        { "ColorScheme", "FileType", "BufWinEnter", "BufWinLeave", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
-        { callback = schedule_show }
+        { "BufWinEnter", "BufWinLeave", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
+        { callback = function() schedule(false) end }
       )
     '';
   };
