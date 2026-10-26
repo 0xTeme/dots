@@ -1,8 +1,9 @@
+{ lib, ... }:
 {
-  # Bars take their colors from the editor, so they follow the palette. The bottom bar sits
-  # on the editor background, and the active tab uses the Keyword color as its accent. This
-  # runs on every colorscheme load, so palette reloads keep it.
-  flake.modules.homeManager.nixvim.programs.nixvim.extraConfigLuaPost = ''
+  # Bars take their colors from the editor. mkAfter puts this after the palette setup
+  # in nixvim.nix, so Normal already has the palette's background when it's read. The
+  # ColorScheme autocommand keeps it correct on every palette change.
+  flake.modules.homeManager.nixvim.programs.nixvim.extraConfigLuaPost = lib.mkAfter ''
     local function apply()
       local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
       local comment = vim.api.nvim_get_hl(0, { name = "Comment", link = false })
