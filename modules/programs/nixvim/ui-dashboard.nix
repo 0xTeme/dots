@@ -1,8 +1,10 @@
-{ lib, ... }:
+{ lib, pkgs, ... }:
 let
-  # The default splash image, in the repo. To change it, replace splash.png here and rebuild,
-  # or put any image at ~/.local/share/navi/splash.png and reopen Neovim, with no rebuild.
-  image = ./assets/splash.png;
+  # The repo default, resized at build time to about twice the on-screen size. The plugin
+  # decodes the full image on every placement, so a smaller source redraws faster.
+  image = pkgs.runCommand "navi-splash.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+    magick ${./assets/splash.png} -resize 720x720 $out
+  '';
 
   # Rows shared by the image and the NAVI header. Only one of them shows at a time.
   imageRows = 16;
@@ -43,8 +45,8 @@ in
       settings.layout = [
         { type = "padding"; val = 2; }
         {
-          # Image on: blank rows, with the image drawn over them. Image off: the NAVI header,
-          # placed in the same rows. Alpha calls this function on every redraw.
+          # Image on and the window is tall enough: blank rows, with the image drawn over them.
+          # Otherwise: the NAVI header, placed in the same rows. Alpha calls this on every redraw.
           type = "text";
           val = { __raw = "function() return NaviSplashRows() end"; };
           opts = {
@@ -88,7 +90,7 @@ in
 
     # One image handle, placed once per change. The image plugin handles windows that cover the
     # dashboard, so this only places the image on theme changes, toggles, a fresh dashboard, and
-    # size changes. Those cases don't fight the plugin.
+    # size changes. A dashboard shorter than min_height shows the header instead.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -99,9 +101,12 @@ in
       local rows = ${toString imageRows}
       local bottom_gap = ${toString headerBottomGap}
       local width = 36
+      local min_height = 36
 
       -- The image this module placed last, as { img, win, buf, x }, or nil.
       local current = nil
+      -- Whether the image was wanted at the last check, so a change can redraw alpha once.
+      local last_wanted = nil
 
       local header = {
         "███╗   ██╗ █████╗ ██╗   ██╗██╗",
@@ -128,11 +133,27 @@ in
         end
       end
 
+      -- Finds the dashboard window, wherever focus is.
+      local function dashboard()
+        for _, w in ipairs(vim.api.nvim_list_wins()) do
+          local b = vim.api.nvim_win_get_buf(w)
+          if vim.bo[b].filetype == "alpha" then
+            return w, b
+          end
+        end
+        return nil, nil
+      end
+
+      -- True when the image should show: it's enabled, and the dashboard is tall enough.
+      local function image_wanted(win)
+        return win ~= nil and enabled() and vim.api.nvim_win_get_height(win) >= min_height
+      end
+
       -- What the image slot shows. Called by alpha on every redraw.
       function NaviSplashRows()
         local out = {}
         for i = 1, rows do out[i] = " " end
-        if enabled() then
+        if image_wanted(dashboard()) then
           return out
         end
         local top = rows - #header - bottom_gap
@@ -156,22 +177,20 @@ in
         current = nil
       end
 
-      -- Finds the dashboard window, wherever focus is.
-      local function dashboard()
-        for _, w in ipairs(vim.api.nvim_list_wins()) do
-          local b = vim.api.nvim_win_get_buf(w)
-          if vim.bo[b].filetype == "alpha" then
-            return w, b
-          end
-        end
-        return nil, nil
-      end
-
-      -- Places the image. With force, it's cleared and placed again. Without force, it moves
-      -- only when the dashboard's column changed, so an unchanged size costs no redraw.
+      -- Brings the image in line with the screen. With force, it's cleared and placed again.
+      -- Without force, it moves only when the dashboard's column changed. When the image
+      -- switches on or off, alpha is redrawn so the header or the blank rows match.
       local function show(force)
         local win, buf = dashboard()
-        if not win or not enabled() then
+        local wanted = image_wanted(win)
+
+        if last_wanted ~= nil and wanted ~= last_wanted then
+          force = true
+          pcall(function() require("alpha").redraw() end)
+        end
+        last_wanted = wanted
+
+        if not wanted then
           clear_all()
           return
         end
@@ -248,7 +267,8 @@ in
         end,
       })
 
-      -- Size changes move the image to its new center. The plugin handles covering windows.
+      -- Size changes move the image to its new center, or swap it for the header when the
+      -- window drops below min_height. The plugin handles windows that cover the dashboard.
       vim.api.nvim_create_autocmd({ "WinResized", "VimResized" }, {
         callback = function() schedule(false, 80) end,
       })

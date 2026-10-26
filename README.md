@@ -67,3 +67,9 @@ Check a change is behavior-neutral:
   `userChrome.css` in its real profile is hand-written, not Nix-managed, to
   avoid the profile-declaration system creating a second profile by accident.
 - Every change here is applied as a full-file replacement, not a patch.
+
+## Splash image
+
+The Neovim dashboard image is `modules/programs/nixvim/assets/splash.png`. Build time resizes a copy for it.
+
+To use a different picture without rebuilding, put it at `~/.local/share/navi/splash.png` and reopen Neovim. Delete that file to return to the repo default. The override is drawn at its original size, so use a picture of about the same proportions.
