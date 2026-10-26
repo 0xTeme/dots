@@ -4,17 +4,8 @@ let
   image = ./assets/lain-the-thinker.png;
 
   # Blank rows reserved for the image. They stay reserved when the image is off, so the
-  # header doesn't move when you toggle.
+  # list doesn't move when you toggle.
   imageRows = 16;
-
-  header = [
-    "███╗   ██╗ █████╗ ██╗   ██╗██╗"
-    "████╗  ██║██╔══██╗██║   ██║██║"
-    "██╔██╗ ██║███████║██║   ██║██║"
-    "██║╚██╗██║██╔══██║╚██╗ ██╔╝██║"
-    "██║ ╚████║██║  ██║ ╚████╔╝ ██║"
-    "╚═╝  ╚═══╝╚═╝  ╚═╝  ╚═══╝  ╚═╝"
-  ];
 
   # letter: the single key shown and bound. label: the text. lua: the action.
   button = letter: label: lua: {
@@ -25,7 +16,7 @@ let
       position = "center";
       shortcut = letter;
       cursor = 3;
-      width = 40;
+      width = 30;
       align_shortcut = "right";
       hl_shortcut = "Keyword";
       keymap = [
@@ -42,7 +33,7 @@ in
     plugins.alpha = {
       enable = true;
       settings.layout = [
-        { type = "padding"; val = 1; }
+        { type = "padding"; val = 2; }
         {
           type = "text";
           val = builtins.genList (_: " ") imageRows;
@@ -51,13 +42,13 @@ in
         { type = "padding"; val = 2; }
         {
           type = "text";
-          val = header;
+          val = "────────────────────────────";
           opts = {
             position = "center";
-            hl = "Keyword";
+            hl = "Comment";
           };
         }
-        { type = "padding"; val = 3; }
+        { type = "padding"; val = 1; }
         {
           type = "group";
           val = [
@@ -70,11 +61,21 @@ in
           ];
           opts.spacing = 1;
         }
+        { type = "padding"; val = 1; }
+        {
+          type = "text";
+          val = "────────────────────────────";
+          opts = {
+            position = "center";
+            hl = "Comment";
+          };
+        }
       ];
     };
 
-    # Draws the splash image, and keeps one image alive across resizes instead of making a
-    # new one each time. The on/off choice is saved in the state directory.
+    # Draws the splash image on the dashboard window itself, not on whichever window has
+    # focus. Opening or closing the file tree moves focus, so the dashboard is found by its
+    # filetype and redrawn at its new width. The on/off choice is saved in the state directory.
     extraConfigLuaPost = lib.mkAfter ''
       local img_path = "${image}"
       local state_file = vim.fn.stdpath("state") .. "/navi-splash-image"
@@ -103,23 +104,33 @@ in
         end
       end
 
+      -- Finds the dashboard window, wherever focus is.
+      local function dashboard()
+        for _, w in ipairs(vim.api.nvim_list_wins()) do
+          local b = vim.api.nvim_win_get_buf(w)
+          if vim.bo[b].filetype == "alpha" then
+            return w, b
+          end
+        end
+        return nil, nil
+      end
+
       local function show()
-        if vim.bo.filetype ~= "alpha" or not enabled() then
+        local win, buf = dashboard()
+        if not win or not enabled() then
           clear_shown()
           return
         end
         local ok, api = pcall(require, "image")
         if not ok then return end
 
-        local win = vim.api.nvim_get_current_win()
-        local buf = vim.api.nvim_get_current_buf()
         local width, height = 36, 16
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
 
         if shown then
-          -- Already drawn: move the same image instead of creating another.
+          -- Already drawn: move the same image to the new position.
           pcall(function()
-            shown:render({ x = col, y = 1, width = width, height = height })
+            shown:render({ x = col, y = 2, width = width, height = height })
           end)
           return
         end
@@ -128,7 +139,7 @@ in
           window = win,
           buffer = buf,
           x = col,
-          y = 1,
+          y = 2,
           width = width,
           height = height,
         })
@@ -142,9 +153,10 @@ in
         show()
       end
 
-      vim.api.nvim_create_autocmd({ "FileType", "BufWinEnter", "WinResized", "VimResized" }, {
-        callback = function() vim.defer_fn(show, 30) end,
-      })
+      vim.api.nvim_create_autocmd(
+        { "FileType", "BufWinEnter", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
+        { callback = function() vim.defer_fn(show, 30) end }
+      )
     '';
   };
 }
