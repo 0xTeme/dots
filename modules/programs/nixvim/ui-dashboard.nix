@@ -61,12 +61,12 @@ in
         {
           type = "group";
           val = [
-            (button "e" "\uF15B  New file" "vim.cmd('enew')")
-            (button "f" "\uF002  Find file" "require('fzf-lua').files()")
-            (button "r" "\uF1DA  Recent files" "require('fzf-lua').oldfiles()")
-            (button "g" "\uF15C  Find word" "require('fzf-lua').live_grep()")
-            (button "i" "\uF03E  Toggle image" "NaviToggleImage()")
-            (button "q" "\uF011  Quit" "vim.cmd('qa')")
+            (button "e" " New file" "vim.cmd('enew')")
+            (button "f" " Find file" "require('fzf-lua').files()")
+            (button "r" " Recent files" "require('fzf-lua').oldfiles()")
+            (button "g" " Find word" "require('fzf-lua').live_grep()")
+            (button "i" " Toggle image" "NaviToggleImage()")
+            (button "q" " Quit" "vim.cmd('qa')")
           ];
           opts.spacing = 1;
         }
@@ -82,9 +82,9 @@ in
       ];
     };
 
-    # One image handle, placed once per change. A window event re-places the same image at
-    # its current position. That restores it after a popup or the file tree covers it,
-    # without clearing it. Theme changes, toggles, and a fresh dashboard clear and place once.
+    # One image handle, placed once per change. The image plugin handles windows that cover the
+    # dashboard, so this only places the image on theme changes, toggles, a fresh dashboard, and
+    # size changes. Those cases don't fight the plugin.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -163,9 +163,8 @@ in
         return nil, nil
       end
 
-      -- Brings the screen in line with the state. With force, the image is cleared and placed
-      -- again. Without force, the same image is re-placed at its current position, which
-      -- restores it after another window has covered it.
+      -- Places the image. With force, it's cleared and placed again. Without force, it moves
+      -- only when the dashboard's column changed, so an unchanged size costs no redraw.
       local function show(force)
         local win, buf = dashboard()
         if not win or not enabled() then
@@ -179,10 +178,12 @@ in
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
 
         if not force and current and current.win == win and current.buf == buf then
-          current.x = col
-          pcall(function()
-            current.img:render({ x = col, y = 2, width = width, height = rows })
-          end)
+          if current.x ~= col then
+            current.x = col
+            pcall(function()
+              current.img:render({ x = col, y = 2, width = width, height = rows })
+            end)
+          end
           return
         end
 
@@ -201,8 +202,7 @@ in
         end
       end
 
-      -- Debounced entry point. Any number of calls in the window run one show, after the
-      -- last call. A forced call waits longer, so alpha's own redraw happens first.
+      -- Debounced entry point. A burst of calls runs one show, after the last call.
       local timer = vim.uv.new_timer()
       local pending_force = false
       local function schedule(force, delay)
@@ -244,11 +244,10 @@ in
         end,
       })
 
-      -- Window events re-place the image at its current position, without clearing it.
-      vim.api.nvim_create_autocmd(
-        { "BufWinEnter", "BufWinLeave", "WinEnter", "WinLeave", "WinClosed", "WinResized", "VimResized" },
-        { callback = function() schedule(false, 80) end }
-      )
+      -- Size changes move the image to its new center. The plugin handles covering windows.
+      vim.api.nvim_create_autocmd({ "WinResized", "VimResized" }, {
+        callback = function() schedule(false, 80) end,
+      })
     '';
   };
 }
