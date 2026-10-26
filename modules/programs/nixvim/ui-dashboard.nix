@@ -82,9 +82,9 @@ in
       ];
     };
 
-    # Draws the splash image on the dashboard window itself, and swaps it with the NAVI
-    # header. The image is recreated on every redraw event, so a theme change or a focus
-    # change can't leave it missing. The on/off choice is saved in the state directory.
+    # Draws the splash image on the dashboard window. Every redraw first clears all images
+    # this module created, so no copy can survive a resize, a focus change, or a file being
+    # opened in the dashboard's place.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -94,7 +94,7 @@ in
       local state_file = vim.fn.stdpath("state") .. "/navi-splash-image"
       local rows = ${toString imageRows}
       local bottom_gap = ${toString headerBottomGap}
-      local shown = nil
+      local shown = false
 
       local header = {
         "███╗   ██╗ █████╗ ██╗   ██╗██╗",
@@ -135,11 +135,15 @@ in
         return out
       end
 
-      local function clear_shown()
-        if shown then
-          pcall(function() shown:clear() end)
-          shown = nil
+      -- Removes every image this plugin can see. Safe to call when there are none.
+      local function clear_all()
+        local ok, api = pcall(require, "image")
+        if ok and api.get_images then
+          for _, img in ipairs(api.get_images()) do
+            pcall(function() img:clear() end)
+          end
         end
+        shown = false
       end
 
       -- Finds the dashboard window, wherever focus is.
@@ -153,11 +157,16 @@ in
         return nil, nil
       end
 
-      -- Clears the old image and draws a fresh one at the dashboard's current width.
+      -- Clears everything, then draws one image on the dashboard if it's open and enabled.
       local function show()
-        clear_shown()
         local win, buf = dashboard()
-        if not win or not enabled() then return end
+        if not win then
+          -- No dashboard on screen: drop the image only if we drew one earlier.
+          if shown then clear_all() end
+          return
+        end
+        clear_all()
+        if not enabled() then return end
 
         local ok, api = pcall(require, "image")
         if not ok then return end
@@ -165,7 +174,7 @@ in
         local width, height = 36, rows
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
 
-        shown = api.from_file(img_path, {
+        local img = api.from_file(img_path, {
           window = win,
           buffer = buf,
           x = col,
@@ -173,19 +182,22 @@ in
           width = width,
           height = height,
         })
-        pcall(function() shown:render() end)
+        if img then
+          pcall(function() img:render() end)
+          shown = true
+        end
       end
 
       -- Called by the "Toggle image" button. Swaps the image and the header, then redraws.
       function NaviToggleImage()
         save(not enabled())
-        clear_shown()
+        clear_all()
         pcall(function() require("alpha").redraw() end)
         vim.defer_fn(show, 30)
       end
 
       vim.api.nvim_create_autocmd(
-        { "ColorScheme", "FileType", "BufWinEnter", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
+        { "ColorScheme", "FileType", "BufWinEnter", "BufWinLeave", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
         { callback = function() vim.defer_fn(show, 30) end }
       )
     '';
