@@ -11,7 +11,7 @@ let
   # header down, closer to the list. A larger number moves it up.
   headerBottomGap = 2;
 
-  # letter: the single key shown and bound. label: the text. lua: the action.
+  # letter: the single key shown and bound. label: the text, with its icon. lua: the action.
   button = letter: label: lua: {
     type = "button";
     val = label;
@@ -61,12 +61,12 @@ in
         {
           type = "group";
           val = [
-            (button "e" "New file" "vim.cmd('enew')")
-            (button "f" "Find file" "require('fzf-lua').files()")
-            (button "r" "Recent files" "require('fzf-lua').oldfiles()")
-            (button "g" "Find word" "require('fzf-lua').live_grep()")
-            (button "i" "Toggle image" "NaviToggleImage()")
-            (button "q" "Quit" "vim.cmd('qa')")
+            (button "e" "\uF15B  New file" "vim.cmd('enew')")
+            (button "f" "\uF002  Find file" "require('fzf-lua').files()")
+            (button "r" "\uF1DA  Recent files" "require('fzf-lua').oldfiles()")
+            (button "g" "\uF15C  Find word" "require('fzf-lua').live_grep()")
+            (button "i" "\uF03E  Toggle image" "NaviToggleImage()")
+            (button "q" "\uF011  Quit" "vim.cmd('qa')")
           ];
           opts.spacing = 1;
         }
@@ -82,10 +82,9 @@ in
       ];
     };
 
-    # One placement per change. Changes are debounced, so a burst of events runs once. A
-    # window-size change moves the existing image; it isn't cleared and drawn again. A theme
-    # change, a toggle, or a fresh dashboard clears and places once, after a short delay that
-    # lets alpha finish its own redraw.
+    # One image handle, placed once per change. A window event re-places the same image at
+    # its current position. That restores it after a popup or the file tree covers it,
+    # without clearing it. Theme changes, toggles, and a fresh dashboard clear and place once.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -165,7 +164,8 @@ in
       end
 
       -- Brings the screen in line with the state. With force, the image is cleared and placed
-      -- again. Without force, it moves only when the dashboard's column changed.
+      -- again. Without force, the same image is re-placed at its current position, which
+      -- restores it after another window has covered it.
       local function show(force)
         local win, buf = dashboard()
         if not win or not enabled() then
@@ -179,12 +179,10 @@ in
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
 
         if not force and current and current.win == win and current.buf == buf then
-          if current.x ~= col then
-            current.x = col
-            pcall(function()
-              current.img:render({ x = col, y = 2, width = width, height = rows })
-            end)
-          end
+          current.x = col
+          pcall(function()
+            current.img:render({ x = col, y = 2, width = width, height = rows })
+          end)
           return
         end
 
@@ -246,9 +244,9 @@ in
         end,
       })
 
-      -- Window and size events move the image, without clearing it.
+      -- Window events re-place the image at its current position, without clearing it.
       vim.api.nvim_create_autocmd(
-        { "BufWinEnter", "BufWinLeave", "WinEnter", "WinClosed", "WinResized", "VimResized" },
+        { "BufWinEnter", "BufWinLeave", "WinEnter", "WinLeave", "WinClosed", "WinResized", "VimResized" },
         { callback = function() schedule(false, 80) end }
       )
     '';
