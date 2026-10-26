@@ -3,8 +3,7 @@ let
   # The splash image, copied into the Nix store at build time. Lua gets its store path.
   image = ./assets/lain-the-thinker.png;
 
-  # Blank rows reserved for the image. They stay reserved when the image is off, so the
-  # list doesn't move when you toggle.
+  # Rows shared by the image and the NAVI header. Only one of them shows at a time.
   imageRows = 16;
 
   # letter: the single key shown and bound. label: the text. lua: the action.
@@ -35,9 +34,14 @@ in
       settings.layout = [
         { type = "padding"; val = 2; }
         {
+          # Image on: blank rows, with the image drawn over them. Image off: the NAVI header,
+          # centered in the same rows. Alpha calls this function on every redraw.
           type = "text";
-          val = builtins.genList (_: " ") imageRows;
-          opts.position = "center";
+          val = { __raw = "function() return NaviSplashRows() end"; };
+          opts = {
+            position = "center";
+            hl = "Keyword";
+          };
         }
         { type = "padding"; val = 2; }
         {
@@ -73,13 +77,22 @@ in
       ];
     };
 
-    # Draws the splash image on the dashboard window itself, not on whichever window has
-    # focus. Opening or closing the file tree moves focus, so the dashboard is found by its
-    # filetype and redrawn at its new width. The on/off choice is saved in the state directory.
+    # Draws the splash image on the dashboard window itself, and swaps it with the NAVI
+    # header. The on/off choice is saved in the state directory.
     extraConfigLuaPost = lib.mkAfter ''
       local img_path = "${image}"
       local state_file = vim.fn.stdpath("state") .. "/navi-splash-image"
+      local rows = ${toString imageRows}
       local shown = nil
+
+      local header = {
+        "███╗   ██╗ █████╗ ██╗   ██╗██╗",
+        "████╗  ██║██╔══██╗██║   ██║██║",
+        "██╔██╗ ██║███████║██║   ██║██║",
+        "██║╚██╗██║██╔══██║╚██╗ ██╔╝██║",
+        "██║ ╚████║██║  ██║ ╚████╔╝ ██║",
+        "╚═╝  ╚═══╝╚═╝  ╚═╝  ╚═══╝  ╚═╝",
+      }
 
       local function enabled()
         local f = io.open(state_file, "r")
@@ -95,6 +108,20 @@ in
           f:write(on and "1" or "0")
           f:close()
         end
+      end
+
+      -- What the image slot shows. Called by alpha on every redraw.
+      function NaviSplashRows()
+        local out = {}
+        for i = 1, rows do out[i] = " " end
+        if enabled() then
+          return out
+        end
+        local top = math.floor((rows - #header) / 2)
+        for i, line in ipairs(header) do
+          out[top + i] = line
+        end
+        return out
       end
 
       local function clear_shown()
@@ -124,11 +151,10 @@ in
         local ok, api = pcall(require, "image")
         if not ok then return end
 
-        local width, height = 36, 16
+        local width, height = 36, rows
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
 
         if shown then
-          -- Already drawn: move the same image to the new position.
           pcall(function()
             shown:render({ x = col, y = 2, width = width, height = height })
           end)
@@ -146,11 +172,12 @@ in
         pcall(function() shown:render() end)
       end
 
-      -- Called by the "Toggle image" button.
+      -- Called by the "Toggle image" button. Swaps the image and the header, then redraws.
       function NaviToggleImage()
         save(not enabled())
         clear_shown()
-        show()
+        pcall(function() require("alpha").redraw() end)
+        vim.defer_fn(show, 30)
       end
 
       vim.api.nvim_create_autocmd(
