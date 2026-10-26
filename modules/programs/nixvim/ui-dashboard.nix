@@ -82,10 +82,9 @@ in
       ];
     };
 
-    # One image object lives while the dashboard is open. It moves in place when the
-    # dashboard's column changes, and it's recreated on a palette change, a fresh dashboard,
-    # a toggle, or a different window or buffer. A palette change places the image several
-    # times, so the last placement lands after alpha has finished its own redraw.
+    # The image plugin keeps its own list of every image it has drawn, so clearing one
+    # handle isn't enough. Each clear here removes everything in that list. The image is
+    # drawn only while the dashboard is on screen, and cleared everywhere else.
     extraConfigLuaPost = lib.mkAfter ''
       -- A user image wins over the repo default, so it can be swapped without a rebuild.
       local data_home = vim.env.XDG_DATA_HOME or (vim.env.HOME .. "/.local/share")
@@ -97,7 +96,7 @@ in
       local bottom_gap = ${toString headerBottomGap}
       local width = 36
 
-      -- The one image this module owns: { img, win, buf, x }, or nil.
+      -- The image this module placed last, as { img, win, buf, x }, or nil.
       local current = nil
 
       local header = {
@@ -139,10 +138,18 @@ in
         return out
       end
 
-      -- Removes the one image this module owns. Safe when there is none.
-      local function destroy()
-        if current then
-          pcall(function() current.img:clear() end)
+      -- Removes every image the plugin has drawn, not just ours. Falls back to clearing each
+      -- entry in its list if the module-level clear isn't available.
+      local function clear_all()
+        local ok, api = pcall(require, "image")
+        if not ok then return end
+        if api.clear then
+          pcall(api.clear)
+        end
+        if api.get_images then
+          for _, img in ipairs(api.get_images()) do
+            pcall(function() img:clear() end)
+          end
         end
         current = nil
       end
@@ -158,31 +165,17 @@ in
         return nil, nil
       end
 
-      -- Brings the image in line with the screen. Moves it when only the column changed.
-      local function show(force)
+      -- One draw: clear everything, then place a single image if the dashboard is on screen.
+      -- With no dashboard, everything is cleared and nothing is drawn.
+      local function show()
         local win, buf = dashboard()
-        if not win or not enabled() then
-          destroy()
-          return
-        end
-        if force then destroy() end
+        clear_all()
+        if not win or not enabled() then return end
 
         local ok, api = pcall(require, "image")
         if not ok then return end
 
         local col = math.max(0, math.floor((vim.api.nvim_win_get_width(win) - width) / 2))
-
-        if current and current.win == win and current.buf == buf then
-          if current.x ~= col then
-            current.x = col
-            pcall(function()
-              current.img:render({ x = col, y = 2, width = width, height = rows })
-            end)
-          end
-          return
-        end
-
-        destroy()
         local img = api.from_file(img_path, {
           window = win,
           buffer = buf,
@@ -197,36 +190,33 @@ in
         end
       end
 
-      -- Debounce for ordinary window events: a burst runs one call after the last event.
+      -- Debounce for window events: a burst runs one draw, after the last event.
       local timer = vim.uv.new_timer()
       local function schedule()
         timer:stop()
-        timer:start(60, 0, vim.schedule_wrap(function() show(false) end))
+        timer:start(80, 0, vim.schedule_wrap(show))
       end
 
-      -- After a palette change, place the image at several delays. Alpha redraws on its own
-      -- schedule, and any redraw clears an image placed just before it. The last placement
-      -- lands after that redraw.
+      -- After a palette change or a fresh dashboard, draw at a few delays. Alpha redraws on
+      -- its own schedule, and any redraw can clear an image placed just before it.
       local function palette_refresh()
-        destroy()
-        for _, delay in ipairs({ 0, 150, 400, 800, 1500, 2500 }) do
-          vim.defer_fn(function() show(true) end, delay)
+        clear_all()
+        for _, delay in ipairs({ 0, 300, 900, 1800 }) do
+          vim.defer_fn(show, delay)
         end
       end
 
       -- Called by the "Toggle image" button. Swaps the image and the header, then redraws.
       function NaviToggleImage()
         save(not enabled())
-        destroy()
+        clear_all()
         pcall(function() require("alpha").redraw() end)
         palette_refresh()
       end
 
-      -- A Neovim colorscheme change.
       vim.api.nvim_create_autocmd("ColorScheme", { callback = palette_refresh })
 
-      -- The palette reload rewrites matugen.lua. It can skip the ColorScheme event, so the
-      -- file is watched too.
+      -- The palette reload rewrites matugen.lua and can skip the ColorScheme event.
       local watcher = vim.uv.new_fs_event()
       if watcher then
         watcher:start(vim.fn.stdpath("config") .. "/lua", {}, function(err, filename)
@@ -235,13 +225,16 @@ in
         end)
       end
 
+      -- A fresh dashboard gets its image after alpha has drawn it.
       vim.api.nvim_create_autocmd("FileType", {
         callback = function(args)
           if vim.bo[args.buf].filetype == "alpha" then palette_refresh() end
         end,
       })
+
+      -- Window and size events only move the image, debounced.
       vim.api.nvim_create_autocmd(
-        { "BufWinEnter", "BufWinLeave", "WinEnter", "WinNew", "WinClosed", "WinResized", "VimResized" },
+        { "BufWinEnter", "BufWinLeave", "WinEnter", "WinClosed", "WinResized", "VimResized" },
         { callback = schedule }
       )
     '';
