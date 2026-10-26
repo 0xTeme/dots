@@ -6,6 +6,10 @@ let
   # Rows shared by the image and the NAVI header. Only one of them shows at a time.
   imageRows = 16;
 
+  # Blank rows left under the NAVI header inside that block. A smaller number moves the
+  # header down, closer to the list. A larger number moves it up.
+  headerBottomGap = 2;
+
   # letter: the single key shown and bound. label: the text. lua: the action.
   button = letter: label: lua: {
     type = "button";
@@ -35,7 +39,7 @@ in
         { type = "padding"; val = 2; }
         {
           # Image on: blank rows, with the image drawn over them. Image off: the NAVI header,
-          # centered in the same rows. Alpha calls this function on every redraw.
+          # placed in the same rows. Alpha calls this function on every redraw.
           type = "text";
           val = { __raw = "function() return NaviSplashRows() end"; };
           opts = {
@@ -83,6 +87,7 @@ in
       local img_path = "${image}"
       local state_file = vim.fn.stdpath("state") .. "/navi-splash-image"
       local rows = ${toString imageRows}
+      local bottom_gap = ${toString headerBottomGap}
       local shown = nil
 
       local header = {
@@ -117,7 +122,7 @@ in
         if enabled() then
           return out
         end
-        local top = math.floor((rows - #header) / 2)
+        local top = rows - #header - bottom_gap
         for i, line in ipairs(header) do
           out[top + i] = line
         end
