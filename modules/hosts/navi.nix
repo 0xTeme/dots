@@ -37,6 +37,7 @@
       qt
       gtk-dark
       localsend
+      virtualization
     ];
   };
 
