@@ -3,6 +3,15 @@
     programs.bash = {
       enable = true;
 
+      # Interactive shortcuts. They only apply to typed commands, not to scripts.
+      shellAliases = {
+        ls = "eza --icons=auto --group-directories-first";
+        ll = "eza -l --icons=auto --group-directories-first --git";
+        la = "eza -la --icons=auto --group-directories-first --git";
+        lt = "eza --tree --level=2 --icons=auto";
+        cat = "bat --paging=never";
+      };
+
       initExtra = ''
         # Tracks how long each command takes. __in_prompt_command guards against the
         # DEBUG trap firing on the prompt's own internal commands (git, sed, etc.),
@@ -70,6 +79,28 @@
 
         PROMPT_COMMAND=__prompt_command
       '';
+    };
+
+    # eza replaces ls with icons and git status. Its own bash aliases are off, so the
+    # ones above are the only definitions.
+    programs.eza = {
+      enable = true;
+      enableBashIntegration = false;
+    };
+
+    # zoxide adds z, which jumps to folders you visit often. Plain cd is unchanged.
+    programs.zoxide = {
+      enable = true;
+      enableBashIntegration = true;
+    };
+
+    # bat is a cat with syntax highlighting. The plain style drops the header and grid
+    # so output still pipes cleanly.
+    programs.bat = {
+      enable = true;
+      config = {
+        style = "plain";
+      };
     };
   };
 }
