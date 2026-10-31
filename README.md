@@ -19,30 +19,27 @@ Files must be tracked by git, or import-tree won't see them.
       flake-parts.nix
       hosts/       navi.nix (feature list), navi-hardware.nix
       system/      boot, nix-settings, network, locale, fonts, audio, power, security,
-                   base-packages, disks, docker (idle until first use), nix-ld
+                   base-packages, disks (monthly btrfs scrub), docker (idle until first use),
+                   nix-ld
       users/       teme.nix
       desktop/     niri/, xwayland, greeter, noctalia, input-method, mime, theme-reload,
-                   cursor, file-picker, gtk-dark
+                   cursor, qt, gtk-dark, gtk-reload, gtk-square, file-manager (Nautilus)
       apps/        foot, librewolf, telegram, libreoffice, imv, zathura, mpv, glow,
-                   mpd, rmpc, screen-recorder, btop, keepassxc, mpd-mpris,
-                   pavucontrol, typing
+                   mpd, mpd-mpris, rmpc, screen-recorder, btop, keepassxc, pavucontrol,
+                   typing, localsend, udiskie, virtualization (libvirt, virt-manager)
       security/    security-tools (catalog, nothing enabled by default), wireless-audit,
                    recon
-      programs/    bash, fzf, fastfetch, yazi, xdg-dirs, git, agy, opencode, nh, nixvim/
-                   (editor, including a full IDE layer: dashboard, file tree,
-                   bufferline, Sixel image preview)
+      programs/    bash (prompt, eza, zoxide, bat), fzf, fastfetch, yazi, xdg-dirs, git,
+                   agy, opencode, nh, nixvim/ (editor, IDE layer, dashboard with splash
+                   image, lualine, file tree)
 
 ## Rebuild
 
     cd ~/dots
     git add -A
-    nixos-rebuild switch --sudo --flake ~/dots#navi
+    nh os build .        # builds and shows the package diff before anything is applied
+    nh os switch .       # applies it
     git commit -m "..."
-
-Check a change is behavior-neutral:
-
-    nixos-rebuild build --flake ~/dots#navi
-    nix store diff-closures /run/current-system ./result
 
 ## Conventions
 
