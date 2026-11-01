@@ -1,13 +1,13 @@
 { lib, ... }:
 {
   # Yazi-style selection for the file tree and the splash screen. The highlight covers the text
-  # plus one cell of padding on each side. Sharp half-block caps sit just outside that padding,
-  # so the capsule's edge is solid and the dark half of each cap faces outward, as in yazi.
-  # Caps are overlays on cells that already exist, so nothing shifts when the selection moves.
-  # The file tree gets a one-column pad on every line, so its left cap has a cell to sit in.
-  # The capsule is drawn only in the focused window, and the terminal cursor is hidden in these
-  # two buffers, so the capsule is the one focus marker. On the splash, j and k move between
-  # button lines only.
+  # plus one cell of padding on each side, and sharp half-block caps sit just outside it. When
+  # the text runs to the end of the line there is no cell left to highlight, so the cap is drawn
+  # after the line, preceded by one cell in the selection colour. That keeps the capsule solid.
+  # Caps are overlays or end-of-line text, so nothing shifts when the selection moves. The file
+  # tree gets a one-column pad on every line, so its left cap has a cell to sit in. The capsule
+  # is drawn only in the focused window, and the terminal cursor is hidden in these two buffers,
+  # so the capsule is the one focus marker. On the splash, j and k move between button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -75,8 +75,9 @@
           })
         end
 
-        -- Right cap: the cell just after the highlight. At the end of a line there is no cell,
-        -- so the cap is drawn after the line instead, which moves nothing.
+        -- Right cap. Inside the line, it overlays the cell just after the highlight. At the end
+        -- of the line there is no such cell, so one cell in the selection colour is drawn first,
+        -- then the cap, which keeps the capsule continuous.
         if hl_stop < #line then
           vim.api.nvim_buf_set_extmark(buf, ns, row, hl_stop, {
             virt_text = { { "▌", "NaviCap" } },
@@ -84,7 +85,7 @@
           })
         else
           vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
-            virt_text = { { "▌", "NaviCap" } },
+            virt_text = { { " ", "NaviSelection" }, { "▌", "NaviCap" } },
             virt_text_pos = "eol",
           })
         end
