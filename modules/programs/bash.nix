@@ -1,5 +1,5 @@
 {
-  flake.modules.homeManager.bash = {
+  flake.modules.homeManager.bash = { ... }: {
     programs.bash = {
       enable = true;
 
@@ -94,13 +94,10 @@
       enableBashIntegration = true;
     };
 
-    # bat is a cat with syntax highlighting. The plain style drops the header and grid
-    # so output still pipes cleanly.
-    programs.bat = {
-      enable = true;
-      config = {
-        style = "plain";
-      };
-    };
+    # bat is a cat with syntax highlighting. No config file is generated here: Noctalia's bat
+    # template owns ~/.config/bat/config so it can write its theme line. Plain style comes from
+    # the environment instead, which bat reads without a config file.
+    programs.bat.enable = true;
+    home.sessionVariables.BAT_STYLE = "plain";
   };
 }
