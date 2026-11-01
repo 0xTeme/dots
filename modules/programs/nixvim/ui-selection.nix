@@ -1,13 +1,12 @@
 { lib, ... }:
 {
-  # Yazi-style selection for the file tree and the splash screen. The highlight covers the text
-  # plus one cell of padding on each side, and sharp half-block caps sit just outside it. When
-  # the text runs to the end of the line there is no cell left to highlight, so the cap is drawn
-  # after the line, preceded by one cell in the selection colour. That keeps the capsule solid.
-  # Caps are overlays or end-of-line text, so nothing shifts when the selection moves. The file
-  # tree gets a one-column pad on every line, so its left cap has a cell to sit in. The capsule
-  # is drawn only in the focused window, and the terminal cursor is hidden in these two buffers,
-  # so the capsule is the one focus marker. On the splash, j and k move between button lines only.
+  # Sharp-cornered selection for the file tree and the splash screen. The highlight covers the
+  # text plus one cell of padding on each side, all in the selection colour, so there are no
+  # half-filled cells. On the tree, the left padding is virtual text in the same colour, since
+  # the icons start at column 0. At the end of a line, the right padding is virtual text too.
+  # The capsule is drawn only in the focused window, and the terminal cursor is hidden in these
+  # two buffers, so the highlight is the one focus marker. On the splash, j and k move between
+  # button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -21,31 +20,34 @@
         local cline = vim.api.nvim_get_hl(0, { name = "CursorLine", link = false })
         local accent = vim.api.nvim_get_hl(0, { name = "Keyword", link = false })
         local sel_bg = cline.bg or normal.bg
-        vim.api.nvim_set_hl(0, "NaviCap", { fg = sel_bg, bg = normal.bg })
         vim.api.nvim_set_hl(0, "NaviSelection", { fg = accent.fg, bg = sel_bg, bold = true })
         vim.api.nvim_set_hl(0, "NaviHiddenCursor", { blend = 100, nocombine = true })
       end
 
-      local function clear(buf)
-        if vim.api.nvim_buf_is_valid(buf) then
-          vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-        end
-      end
-
-      -- Gives every tree line a one-column pad, so the left cap has a cell to sit in.
-      local function pad_tree(buf)
-        if not vim.api.nvim_buf_is_valid(buf) then return end
+      -- Sets the tree's one-column left pad on every line. The selected row gets the selection
+      -- colour, every other row gets Normal, so the pad is always blank unless it's selected.
+      local function pad_tree(buf, sel_row)
+        if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].filetype ~= "NvimTree" then return end
         vim.api.nvim_buf_clear_namespace(buf, pad_ns, 0, -1)
         local total = vim.api.nvim_buf_line_count(buf)
         for row = 0, total - 1 do
+          local hl = (row == sel_row) and "NaviSelection" or "Normal"
           vim.api.nvim_buf_set_extmark(buf, pad_ns, row, 0, {
-            virt_text = { { " ", "Normal" } },
+            virt_text = { { " ", hl } },
             virt_text_pos = "inline",
           })
         end
       end
 
-      -- Draws the capsule on the cursor's row, and only in the focused window.
+      -- Removes the highlight and resets the tree's pad. Called when leaving a window.
+      local function clear(buf)
+        if vim.api.nvim_buf_is_valid(buf) then
+          vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+          pad_tree(buf, nil)
+        end
+      end
+
+      -- Draws the highlight on the cursor's row, and only in the focused window.
       local function draw(buf, win)
         if win ~= vim.api.nvim_get_current_win() then return end
         clear(buf)
@@ -57,35 +59,25 @@
         local e = (line:match("()%s*$") or (#line + 1)) - 1
         if e <= s then return end
 
-        -- Highlight: the text plus one padding cell on each side, where those cells exist.
+        if vim.bo[buf].filetype == "NvimTree" then
+          pad_tree(buf, row)
+        end
+
+        -- Highlight: the text plus one padding cell on each side, where those cells exist in
+        -- the buffer. The left pad on the tree is virtual, so it's handled by pad_tree above.
         local hl_start = math.max(0, s - 1)
         local hl_stop = math.min(#line, e + 1)
-
         vim.api.nvim_buf_set_extmark(buf, ns, row, hl_start, {
           end_row = row,
           end_col = hl_stop,
           hl_group = "NaviSelection",
         })
 
-        -- Left cap: the cell just before the highlight.
-        if hl_start >= 1 then
-          vim.api.nvim_buf_set_extmark(buf, ns, row, hl_start - 1, {
-            virt_text = { { "▐", "NaviCap" } },
-            virt_text_pos = "overlay",
-          })
-        end
-
-        -- Right cap. Inside the line, it overlays the cell just after the highlight. At the end
-        -- of the line there is no such cell, so one cell in the selection colour is drawn first,
-        -- then the cap, which keeps the capsule continuous.
-        if hl_stop < #line then
-          vim.api.nvim_buf_set_extmark(buf, ns, row, hl_stop, {
-            virt_text = { { "▌", "NaviCap" } },
-            virt_text_pos = "overlay",
-          })
-        else
+        -- If the text runs to the end of the line, there's no buffer cell after it, so the right
+        -- pad is virtual text at the end of the line.
+        if e >= #line then
           vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
-            virt_text = { { " ", "NaviSelection" }, { "▌", "NaviCap" } },
+            virt_text = { { " ", "NaviSelection" } },
             virt_text_pos = "eol",
           })
         end
@@ -99,11 +91,11 @@
         end
       end
 
-      -- The tree's pad is redrawn whenever the tree changes, since nvim-tree rewrites its lines.
+      -- The tree's pads are rebuilt whenever the tree changes, since nvim-tree rewrites its lines.
       local function on_tree_change()
         local buf = vim.api.nvim_get_current_buf()
         if vim.bo[buf].filetype == "NvimTree" then
-          pad_tree(buf)
+          pad_tree(buf, nil)
           draw(buf, vim.api.nvim_get_current_win())
         end
       end
@@ -155,7 +147,7 @@
       vim.api.nvim_create_autocmd({ "TextChanged", "BufWinEnter", "FileType" }, { callback = on_tree_change })
       vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter", "FileType" }, { callback = on_enter })
 
-      -- Leaving a window removes its capsule, so only the focused pane shows one.
+      -- Leaving a window removes its highlight, so only the focused pane shows one.
       vim.api.nvim_create_autocmd("WinLeave", {
         callback = function()
           clear(vim.api.nvim_get_current_buf())
