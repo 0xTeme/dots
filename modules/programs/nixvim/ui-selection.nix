@@ -1,12 +1,13 @@
 { lib, ... }:
 {
-  # Yazi-style selection for the file tree and the splash screen. The capsule covers one cell
-  # before the text and one after, with sharp half-block caps at each end. The caps overlay
-  # those cells, so nothing shifts when the selection moves. The file tree gets a one-column
-  # pad on every line, applied as virtual text, so its icons have room for the left cap. The
-  # capsule is drawn only in the focused window, and the terminal cursor is hidden in these two
-  # buffers, so the capsule is the one focus marker. On the splash, j and k move between button
-  # lines only.
+  # Yazi-style selection for the file tree and the splash screen. The highlight covers the text
+  # plus one cell of padding on each side. Sharp half-block caps sit just outside that padding,
+  # so the capsule's edge is solid and the dark half of each cap faces outward, as in yazi.
+  # Caps are overlays on cells that already exist, so nothing shifts when the selection moves.
+  # The file tree gets a one-column pad on every line, so its left cap has a cell to sit in.
+  # The capsule is drawn only in the focused window, and the terminal cursor is hidden in these
+  # two buffers, so the capsule is the one focus marker. On the splash, j and k move between
+  # button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -51,14 +52,14 @@
         local row = vim.api.nvim_win_get_cursor(win)[1] - 1
         local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ""
 
-        -- Byte columns, 0-based: the text runs from start_col up to, not including, stop_col.
-        local start_col = (line:find("%S") or 1) - 1
-        local stop_col = (line:match("()%s*$") or (#line + 1)) - 1
-        if stop_col <= start_col then return end
+        -- Byte columns, 0-based: the text runs from s up to, not including, e.
+        local s = (line:find("%S") or 1) - 1
+        local e = (line:match("()%s*$") or (#line + 1)) - 1
+        if e <= s then return end
 
-        -- The highlight takes one cell on each side of the text, when those cells exist.
-        local hl_start = math.max(0, start_col - 1)
-        local hl_stop = math.min(#line, stop_col + 1)
+        -- Highlight: the text plus one padding cell on each side, where those cells exist.
+        local hl_start = math.max(0, s - 1)
+        local hl_stop = math.min(#line, e + 1)
 
         vim.api.nvim_buf_set_extmark(buf, ns, row, hl_start, {
           end_row = row,
@@ -66,7 +67,7 @@
           hl_group = "NaviSelection",
         })
 
-        -- Left cap sits in the cell before the highlight, so it needs one more cell.
+        -- Left cap: the cell just before the highlight.
         if hl_start >= 1 then
           vim.api.nvim_buf_set_extmark(buf, ns, row, hl_start - 1, {
             virt_text = { { "▐", "NaviCap" } },
@@ -74,10 +75,10 @@
           })
         end
 
-        -- Right cap sits in the last highlighted cell. If the highlight reaches the end of
-        -- the line, the cap goes after the line instead, which moves nothing.
+        -- Right cap: the cell just after the highlight. At the end of a line there is no cell,
+        -- so the cap is drawn after the line instead, which moves nothing.
         if hl_stop < #line then
-          vim.api.nvim_buf_set_extmark(buf, ns, row, hl_stop - 1, {
+          vim.api.nvim_buf_set_extmark(buf, ns, row, hl_stop, {
             virt_text = { { "▌", "NaviCap" } },
             virt_text_pos = "overlay",
           })
@@ -92,9 +93,7 @@
       local function on_move()
         local buf = vim.api.nvim_get_current_buf()
         local ft = vim.bo[buf].filetype
-        if ft == "NvimTree" then
-          draw(buf, vim.api.nvim_get_current_win())
-        elseif ft == "alpha" then
+        if ft == "NvimTree" or ft == "alpha" then
           draw(buf, vim.api.nvim_get_current_win())
         end
       end
