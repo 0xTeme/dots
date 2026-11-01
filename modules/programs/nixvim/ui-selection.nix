@@ -1,12 +1,10 @@
 { lib, ... }:
 {
-  # Sharp-cornered selection for the file tree and the splash screen, in the selection colour,
-  # with one padding cell on each side of the text. Extmark columns count bytes, but the screen
-  # draws in cells, and multi-byte characters (icons, box-drawing) make the two differ. So the
-  # splash works in display cells and converts to bytes only when placing an extmark. The end
-  # pad is virtual text at end of line, the same mechanism the tree uses. The highlight is drawn
-  # only in the focused window, and the terminal cursor is hidden in these two buffers. On the
-  # splash, j and k move between button lines only.
+  # Selection for the file tree and the splash screen, in the selection colour. The tree gets a
+  # one-cell pad on each side. The splash gets a one-cell pad on the left only: its highlight ends
+  # exactly at the last character of the text, with no right pad, so any remaining gap can be
+  # located precisely. The highlight is drawn only in the focused window, and the terminal cursor
+  # is hidden in these two buffers. On the splash, j and k move between button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -61,35 +59,20 @@
         return #line
       end
 
-      -- Splash: highlight the text plus one cell each side, measured in display cells.
+      -- Splash: the highlight starts one cell before the text and ends at the last character.
       local function draw_splash(buf, row, line)
         local s_b = (line:find("%S") or 1) - 1
         local e_b = (line:match("()%s*$") or (#line + 1)) - 1
         if e_b <= s_b then return end
 
         local s_c = cell_of_byte(line, s_b)
-        local e_c = cell_of_byte(line, e_b)
-        local width = vim.fn.strdisplaywidth(line)
+        local start_byte = byte_at_cell(line, math.max(0, s_c - 1))
 
-        local hl_s_c = math.max(0, s_c - 1)
-        local hl_e_c = e_c + 1
-
-        local start_byte = byte_at_cell(line, hl_s_c)
-        local stop_byte = byte_at_cell(line, math.min(hl_e_c, width))
         vim.api.nvim_buf_set_extmark(buf, ns, row, start_byte, {
           end_row = row,
-          end_col = stop_byte,
+          end_col = e_b,
           hl_group = "NaviSelection",
         })
-
-        -- The right pad sits past the last cell of the line. End-of-line virtual text puts it
-        -- right after the final character, which is where that cell is.
-        if hl_e_c > width then
-          vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
-            virt_text = { { " ", "NaviSelection" } },
-            virt_text_pos = "eol",
-          })
-        end
       end
 
       -- Tree: the text span plus one cell each side. Its icons have no multi-byte characters
