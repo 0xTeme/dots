@@ -4,10 +4,9 @@
   # with one padding cell on each side of the text. Extmark columns count bytes, but the screen
   # draws in cells, and multi-byte characters (icons, box-drawing) make the two differ. So the
   # splash works in display cells and converts to bytes only when placing an extmark. The end
-  # pad is placed by window column, so it can't drift. The tree has no multi-byte characters
-  # after its icon, so its code is unchanged. The highlight is drawn only in the focused window,
-  # and the terminal cursor is hidden in these two buffers. On the splash, j and k move between
-  # button lines only.
+  # pad is virtual text at end of line, the same mechanism the tree uses. The highlight is drawn
+  # only in the focused window, and the terminal cursor is hidden in these two buffers. On the
+  # splash, j and k move between button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -62,7 +61,7 @@
         return #line
       end
 
-      -- Splash: highlight the text plus one cell each side, all measured in display cells.
+      -- Splash: highlight the text plus one cell each side, measured in display cells.
       local function draw_splash(buf, row, line)
         local s_b = (line:find("%S") or 1) - 1
         local e_b = (line:match("()%s*$") or (#line + 1)) - 1
@@ -83,12 +82,12 @@
           hl_group = "NaviSelection",
         })
 
-        -- Right pad past the end of the text: placed at a window column, not a byte.
+        -- The right pad sits past the last cell of the line. End-of-line virtual text puts it
+        -- right after the final character, which is where that cell is.
         if hl_e_c > width then
           vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
             virt_text = { { " ", "NaviSelection" } },
-            virt_text_pos = "win_col",
-            virt_text_win_col = hl_e_c - 1,
+            virt_text_pos = "eol",
           })
         end
       end
