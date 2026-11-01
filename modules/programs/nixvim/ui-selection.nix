@@ -1,11 +1,13 @@
 { lib, ... }:
 {
   # Sharp-cornered selection for the file tree and the splash screen, in the selection colour,
-  # with one padding cell on each side of the text. On the splash, the padding is drawn over the
-  # real space cells beside the text, so it doesn't depend on how many trailing spaces alpha
-  # leaves. On the tree, the left pad is a virtual cell on every line, since the icons start at
-  # column 0. The highlight is drawn only in the focused window, and the terminal cursor is
-  # hidden in these two buffers. On the splash, j and k move between button lines only.
+  # with one padding cell on each side of the text. Extmark columns count bytes, but the screen
+  # draws in cells, and multi-byte characters (icons, box-drawing) make the two differ. So the
+  # splash works in display cells and converts to bytes only when placing an extmark. The end
+  # pad is placed by window column, so it can't drift. The tree has no multi-byte characters
+  # after its icon, so its code is unchanged. The highlight is drawn only in the focused window,
+  # and the terminal cursor is hidden in these two buffers. On the splash, j and k move between
+  # button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -23,8 +25,7 @@
         vim.api.nvim_set_hl(0, "NaviHiddenCursor", { blend = 100, nocombine = true })
       end
 
-      -- Sets the tree's one-column left pad on every line. The selected row gets the selection
-      -- colour, every other row gets Normal, so the pad is blank unless it's selected.
+      -- Tree: the left pad on every line, selected row highlighted, the rest Normal.
       local function pad_tree(buf, sel_row)
         if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].filetype ~= "NvimTree" then return end
         vim.api.nvim_buf_clear_namespace(buf, pad_ns, 0, -1)
@@ -38,7 +39,6 @@
         end
       end
 
-      -- Removes the highlight and resets the tree's pad. Called when leaving a window.
       local function clear(buf)
         if vim.api.nvim_buf_is_valid(buf) then
           vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
@@ -46,44 +46,55 @@
         end
       end
 
-      -- Splash: the text span gets the highlight. The cell before it and the cell after it are
-      -- overlaid with the selection colour when they're real spaces. At the end of the line,
-      -- there's no cell, so the pad is virtual text there instead.
-      local function draw_splash(buf, row, line)
-        -- Byte columns, 0-based: the text runs from s up to, not including, e.
-        local s = (line:find("%S") or 1) - 1
-        local e = (line:match("()%s*$") or (#line + 1)) - 1
-        if e <= s then return end
+      -- Display cell where byte b of the line starts.
+      local function cell_of_byte(line, b)
+        return vim.fn.strdisplaywidth(line:sub(1, b))
+      end
 
-        vim.api.nvim_buf_set_extmark(buf, ns, row, s, {
+      -- Byte index of the first character that starts at or after display cell target.
+      local function byte_at_cell(line, target)
+        local col = 0
+        local n = vim.fn.strchars(line)
+        for i = 0, n - 1 do
+          if col >= target then return vim.fn.byteidx(line, i) end
+          col = col + vim.fn.strdisplaywidth(vim.fn.strcharpart(line, i, 1))
+        end
+        return #line
+      end
+
+      -- Splash: highlight the text plus one cell each side, all measured in display cells.
+      local function draw_splash(buf, row, line)
+        local s_b = (line:find("%S") or 1) - 1
+        local e_b = (line:match("()%s*$") or (#line + 1)) - 1
+        if e_b <= s_b then return end
+
+        local s_c = cell_of_byte(line, s_b)
+        local e_c = cell_of_byte(line, e_b)
+        local width = vim.fn.strdisplaywidth(line)
+
+        local hl_s_c = math.max(0, s_c - 1)
+        local hl_e_c = e_c + 1
+
+        local start_byte = byte_at_cell(line, hl_s_c)
+        local stop_byte = byte_at_cell(line, math.min(hl_e_c, width))
+        vim.api.nvim_buf_set_extmark(buf, ns, row, start_byte, {
           end_row = row,
-          end_col = e,
+          end_col = stop_byte,
           hl_group = "NaviSelection",
         })
 
-        -- Left pad: the cell at s-1 is line:sub(s, s) in Lua's 1-based indexing.
-        if s >= 1 and line:sub(s, s) == " " then
-          vim.api.nvim_buf_set_extmark(buf, ns, row, s - 1, {
-            virt_text = { { " ", "NaviSelection" } },
-            virt_text_pos = "overlay",
-          })
-        end
-
-        -- Right pad: the cell at e is line:sub(e + 1, e + 1).
-        if e < #line and line:sub(e + 1, e + 1) == " " then
-          vim.api.nvim_buf_set_extmark(buf, ns, row, e, {
-            virt_text = { { " ", "NaviSelection" } },
-            virt_text_pos = "overlay",
-          })
-        else
+        -- Right pad past the end of the text: placed at a window column, not a byte.
+        if hl_e_c > width then
           vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
             virt_text = { { " ", "NaviSelection" } },
-            virt_text_pos = "eol",
+            virt_text_pos = "win_col",
+            virt_text_win_col = hl_e_c - 1,
           })
         end
       end
 
-      -- Tree: the text span plus one cell on each side, with the left pad already virtual.
+      -- Tree: the text span plus one cell each side. Its icons have no multi-byte characters
+      -- after them, so byte columns match cell columns here.
       local function draw_tree(buf, row, line)
         local s = (line:find("%S") or 1) - 1
         local e = (line:match("()%s*$") or (#line + 1)) - 1
