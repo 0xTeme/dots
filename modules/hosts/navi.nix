@@ -38,6 +38,7 @@
       gtk-dark
       localsend
       virtualization
+      hotspot
     ];
   };
 
