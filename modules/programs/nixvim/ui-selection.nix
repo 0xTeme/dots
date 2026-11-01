@@ -1,12 +1,11 @@
 { lib, ... }:
 {
-  # Sharp-cornered selection for the file tree and the splash screen. The highlight covers the
-  # text plus one cell of padding on each side, all in the selection colour, so there are no
-  # half-filled cells. On the tree, the left padding is virtual text in the same colour, since
-  # the icons start at column 0. At the end of a line, the right padding is virtual text too.
-  # The capsule is drawn only in the focused window, and the terminal cursor is hidden in these
-  # two buffers, so the highlight is the one focus marker. On the splash, j and k move between
-  # button lines only.
+  # Sharp-cornered selection for the file tree and the splash screen, in the selection colour,
+  # with one padding cell on each side of the text. On the splash, the padding is drawn over the
+  # real space cells beside the text, so it doesn't depend on how many trailing spaces alpha
+  # leaves. On the tree, the left pad is a virtual cell on every line, since the icons start at
+  # column 0. The highlight is drawn only in the focused window, and the terminal cursor is
+  # hidden in these two buffers. On the splash, j and k move between button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -25,7 +24,7 @@
       end
 
       -- Sets the tree's one-column left pad on every line. The selected row gets the selection
-      -- colour, every other row gets Normal, so the pad is always blank unless it's selected.
+      -- colour, every other row gets Normal, so the pad is blank unless it's selected.
       local function pad_tree(buf, sel_row)
         if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].filetype ~= "NvimTree" then return end
         vim.api.nvim_buf_clear_namespace(buf, pad_ns, 0, -1)
@@ -47,24 +46,50 @@
         end
       end
 
-      -- Draws the highlight on the cursor's row, and only in the focused window.
-      local function draw(buf, win)
-        if win ~= vim.api.nvim_get_current_win() then return end
-        clear(buf)
-        local row = vim.api.nvim_win_get_cursor(win)[1] - 1
-        local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ""
-
+      -- Splash: the text span gets the highlight. The cell before it and the cell after it are
+      -- overlaid with the selection colour when they're real spaces. At the end of the line,
+      -- there's no cell, so the pad is virtual text there instead.
+      local function draw_splash(buf, row, line)
         -- Byte columns, 0-based: the text runs from s up to, not including, e.
         local s = (line:find("%S") or 1) - 1
         local e = (line:match("()%s*$") or (#line + 1)) - 1
         if e <= s then return end
 
-        if vim.bo[buf].filetype == "NvimTree" then
-          pad_tree(buf, row)
+        vim.api.nvim_buf_set_extmark(buf, ns, row, s, {
+          end_row = row,
+          end_col = e,
+          hl_group = "NaviSelection",
+        })
+
+        -- Left pad: the cell at s-1 is line:sub(s, s) in Lua's 1-based indexing.
+        if s >= 1 and line:sub(s, s) == " " then
+          vim.api.nvim_buf_set_extmark(buf, ns, row, s - 1, {
+            virt_text = { { " ", "NaviSelection" } },
+            virt_text_pos = "overlay",
+          })
         end
 
-        -- Highlight: the text plus one padding cell on each side, where those cells exist in
-        -- the buffer. The left pad on the tree is virtual, so it's handled by pad_tree above.
+        -- Right pad: the cell at e is line:sub(e + 1, e + 1).
+        if e < #line and line:sub(e + 1, e + 1) == " " then
+          vim.api.nvim_buf_set_extmark(buf, ns, row, e, {
+            virt_text = { { " ", "NaviSelection" } },
+            virt_text_pos = "overlay",
+          })
+        else
+          vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
+            virt_text = { { " ", "NaviSelection" } },
+            virt_text_pos = "eol",
+          })
+        end
+      end
+
+      -- Tree: the text span plus one cell on each side, with the left pad already virtual.
+      local function draw_tree(buf, row, line)
+        local s = (line:find("%S") or 1) - 1
+        local e = (line:match("()%s*$") or (#line + 1)) - 1
+        if e <= s then return end
+        pad_tree(buf, row)
+
         local hl_start = math.max(0, s - 1)
         local hl_stop = math.min(#line, e + 1)
         vim.api.nvim_buf_set_extmark(buf, ns, row, hl_start, {
@@ -72,14 +97,24 @@
           end_col = hl_stop,
           hl_group = "NaviSelection",
         })
-
-        -- If the text runs to the end of the line, there's no buffer cell after it, so the right
-        -- pad is virtual text at the end of the line.
         if e >= #line then
           vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
             virt_text = { { " ", "NaviSelection" } },
             virt_text_pos = "eol",
           })
+        end
+      end
+
+      -- Draws the highlight on the cursor's row, and only in the focused window.
+      local function draw(buf, win)
+        if win ~= vim.api.nvim_get_current_win() then return end
+        clear(buf)
+        local row = vim.api.nvim_win_get_cursor(win)[1] - 1
+        local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ""
+        if vim.bo[buf].filetype == "alpha" then
+          draw_splash(buf, row, line)
+        else
+          draw_tree(buf, row, line)
         end
       end
 
