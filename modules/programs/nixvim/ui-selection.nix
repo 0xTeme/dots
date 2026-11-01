@@ -1,10 +1,11 @@
 { lib, ... }:
 {
-  # Selection for the file tree and the splash screen, in the selection colour. The tree gets a
-  # one-cell pad on each side. The splash gets a one-cell pad on the left only: its highlight ends
-  # exactly at the last character of the text, with no right pad, so any remaining gap can be
-  # located precisely. The highlight is drawn only in the focused window, and the terminal cursor
-  # is hidden in these two buffers. On the splash, j and k move between button lines only.
+  # Selection for the file tree and the splash screen, in the selection colour. Both get one
+  # padding cell on the left. Both also get one padding cell after the text: on the tree and the
+  # splash alike, that cell is end-of-line virtual text when the line has no real space after the
+  # text, which is the same mechanism the tree has always used. The highlight is drawn only in the
+  # focused window, and the terminal cursor is hidden in these two buffers. On the splash, j and k
+  # move between button lines only.
   flake.modules.homeManager.nixvim.programs.nixvim = {
     extraConfigLuaPost = lib.mkAfter ''
       local ns = vim.api.nvim_create_namespace("navi_selection")
@@ -59,7 +60,7 @@
         return #line
       end
 
-      -- Splash: the highlight starts one cell before the text and ends at the last character.
+      -- Splash: one cell before the text, the text itself, and one cell after it.
       local function draw_splash(buf, row, line)
         local s_b = (line:find("%S") or 1) - 1
         local e_b = (line:match("()%s*$") or (#line + 1)) - 1
@@ -73,6 +74,14 @@
           end_col = e_b,
           hl_group = "NaviSelection",
         })
+
+        -- The cell after the text. With no real space there, the pad is end-of-line text.
+        if e_b >= #line then
+          vim.api.nvim_buf_set_extmark(buf, ns, row, #line, {
+            virt_text = { { " ", "NaviSelection" } },
+            virt_text_pos = "eol",
+          })
+        end
       end
 
       -- Tree: the text span plus one cell each side. Its icons have no multi-byte characters
