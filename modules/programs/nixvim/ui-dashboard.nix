@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 let
   # Rows shared by the image and the NAVI header. Only one of them shows at a time.
   imageRows = 16;
@@ -12,13 +12,15 @@ let
   icon = hex: builtins.fromJSON ''"\u${hex}"'';
 
   # letter: the single key shown and bound. label: the text, with its icon. lua: the action.
+  # The shortcut carries a trailing space, so every button line has a real cell after the
+  # letter. The selection highlight uses that cell, rather than a virtual pad.
   button = letter: label: lua: {
     type = "button";
     val = label;
     on_press = { __raw = "function() ${lua} end"; };
     opts = {
       position = "center";
-      shortcut = letter;
+      shortcut = "${letter} ";
       cursor = 3;
       width = 30;
       align_shortcut = "right";
