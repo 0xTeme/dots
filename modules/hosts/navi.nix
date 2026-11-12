@@ -39,6 +39,7 @@
       localsend
       virtualization
       hotspot
+      video-wallpaper
     ];
   };
 
