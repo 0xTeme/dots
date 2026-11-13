@@ -5,10 +5,165 @@
       cava
     ];
 
-    # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't
-    # write to the SSD. It's cleared at logout, which is fine for a cache.
-    # album_art max_size_px is 600 rather than 1200: each track change decodes the cover,
-    # and a smaller cover costs less CPU and battery, and still looks sharp in the panel.
+    # The theme file sets the colours, the highlight styles and the pane layout. It's ported
+    # from vyrx-dev/nix-config. rmpc loads it by name from ~/.config/rmpc/themes/.
+    xdg.configFile."rmpc/themes/theme.ron".text = ''
+      #![enable(implicit_some)]
+      #![enable(unwrap_newtypes)]
+      #![enable(unwrap_variant_newtypes)]
+      (
+          default_album_art_path: None,
+          show_song_table_header: false,
+          draw_borders: true,
+          browser_column_widths: [20, 38, 42],
+          text_color: "#c1c1c1",
+          tab_bar: (
+              enabled: true,
+              active_style: (fg: "#c1c1c1", bg: "#000000", modifiers: "Bold"),
+              inactive_style: (fg: "#333333", modifiers: ""),
+          ),
+          highlighted_item_style: (fg: "#b3c7cc", modifiers: "Bold"),
+          current_item_style: (fg: "#000000", bg: "#b3c7cc", modifiers: "Bold"),
+          borders_style: (fg: "#333333", modifiers: ""),
+          highlight_border_style: (fg: "#b3c7cc"),
+          symbols: (song: "󰝚 ", dir: " ", marker: "* ", ellipsis: "..."),
+          progress_bar: (
+              symbols: ["█", "█", "█"],
+              track_style: (fg: "#333333"),
+              elapsed_style: (fg: "#b3c7cc"),
+              thumb_style: (fg: "#b3c7cc"),
+          ),
+          scrollbar: (
+              symbols: ["", "", "", ""],
+              track_style: (fg: "#333333"),
+              ends_style: (fg: "#333333"),
+              thumb_style: (fg: "#b3c7cc"),
+          ),
+          song_table_format: [
+              (
+                  prop: (kind: Property(Title), style: (fg: "#c1c1c1"),
+                      highlighted_item_style: (fg: "#000000", modifiers: "Bold"),
+                      default: (kind: Property(Filename), style: (fg: "#333333"),)
+                  ),
+                  width: "70%",
+              ),
+              (
+                  prop: (kind: Property(Album), style: (fg: "#333333"),
+                      default: (kind: Text("Unknown Album"), style: (fg: "#333333"))
+                  ),
+                  width: "30%",
+              ),
+          ],
+          layout: Split(
+              direction: Vertical,
+              panes: [
+                  (
+                      size: "3",
+                      pane: Pane(Tabs),
+                  ),
+                  (
+                      size: "4",
+                      pane: Split(
+                          direction: Horizontal,
+                          panes: [
+                              (
+                                  size: "100%",
+                                  pane: Split(
+                                      direction: Vertical,
+                                      panes: [
+                                          (
+                                              size: "4",
+                                              borders: "ALL",
+                                              pane: Pane(Header),
+                                          ),
+                                      ]
+                                  )
+                              ),
+                          ]
+                      ),
+                  ),
+                  (
+                      size: "100%",
+                      pane: Split(
+                          direction: Horizontal,
+                          panes: [
+                              (
+                                  size: "100%",
+                                  borders: "NONE",
+                                  pane: Pane(TabContent),
+                              ),
+                          ]
+                      ),
+                  ),
+                  (
+                      size: "3",
+                      borders: "TOP | BOTTOM",
+                      pane: Pane(ProgressBar),
+                  ),
+              ],
+          ),
+          header: (
+              rows: [
+                  (
+                      left: [
+                          (kind: Property(Status(StateV2(playing_label: " ", paused_label: "❚❚", stopped_label: "❚❚"))), style: (fg: "#b3c7cc", modifiers: "Bold")),
+                      ],
+                      center: [
+                          (kind: Property(Song(Title)), style: (fg: "#c1c1c1", modifiers: "Bold"),
+                              default: (kind: Property(Song(Filename)), style: (fg: "#c1c1c1", modifiers: "Bold"))
+                          )
+                      ],
+                      right: [
+                          (kind: Text("Vol: "), style: (fg: "#b3c7cc", modifiers: "Bold")),
+                          (kind: Property(Status(Volume)), style: (fg: "#b3c7cc", modifiers: "Bold")),
+                          (kind: Text("% "), style: (fg: "#b3c7cc", modifiers: "Bold"))
+                      ]
+                  ),
+                  (
+                      left: [
+                          (kind: Property(Status(Elapsed)), style: (fg: "#c1c1c1")),
+                          (kind: Text("/"), style: (fg: "#333333")),
+                          (kind: Property(Status(Duration)), style: (fg: "#c1c1c1")),
+                      ],
+                      center: [
+                          (kind: Property(Song(Artist)), style: (fg: "#5f8787", modifiers: "Bold"),
+                              default: (kind: Text("Unknown Artist"), style: (fg: "#333333", modifiers: ""))
+                          ),
+                      ],
+                      right: [
+                          (
+                              kind: Property(Widget(States(
+                                  active_style: (fg: "#b3c7cc", modifiers: "Bold"),
+                                  separator_style: (fg: "#333333")))
+                              ),
+                              style: (fg: "#333333")
+                          ),
+                      ]
+                  ),
+              ],
+          ),
+          browser_song_format: [
+              (
+                  kind: Group([
+                      (kind: Property(Track)),
+                      (kind: Text(" ")),
+                  ])
+              ),
+              (
+                  kind: Group([
+                      (kind: Property(Artist)),
+                      (kind: Text(" - ")),
+                      (kind: Property(Title)),
+                  ]),
+                  default: (kind: Property(Filename))
+              ),
+          ],
+      )
+    '';
+
+    # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't write
+    # to the SSD. album_art is 600 px rather than 1200: a smaller cover decodes faster on each
+    # track change, and still looks sharp in the panel. theme points at the file above.
     xdg.configFile."rmpc/config.ron".text = ''
       #![enable(implicit_some)]
       #![enable(unwrap_newtypes)]
@@ -16,7 +171,7 @@
       (
           address: "127.0.0.1:6600",
           password: None,
-          theme: Some("default"),
+          theme: Some("theme"),
           cache_dir: Some("/run/user/1000/rmpc"),
           on_song_change: None,
           volume_step: 5,
