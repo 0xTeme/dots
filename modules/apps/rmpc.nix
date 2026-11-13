@@ -1,3 +1,183 @@
+{ lib, ... }:
+let
+  # The colours in this template are placeholders. The sync script swaps each one for the matching
+  # Noctalia colour. The tab bar is 2 rows here, down from 3, which removes the gap under the tabs.
+  template = ''
+    #![enable(implicit_some)]
+    #![enable(unwrap_newtypes)]
+    #![enable(unwrap_variant_newtypes)]
+    (
+        default_album_art_path: None,
+        show_song_table_header: false,
+        draw_borders: true,
+        browser_column_widths: [20, 38, 42],
+        text_color: "#c1c1c1",
+        tab_bar: (
+            enabled: true,
+            active_style: (fg: "#c1c1c1", bg: "#000000", modifiers: "Bold"),
+            inactive_style: (fg: "#333333", modifiers: ""),
+        ),
+        highlighted_item_style: (fg: "#b3c7cc", modifiers: "Bold"),
+        current_item_style: (fg: "#000000", bg: "#b3c7cc", modifiers: "Bold"),
+        borders_style: (fg: "#333333", modifiers: ""),
+        highlight_border_style: (fg: "#b3c7cc"),
+        symbols: (song: "󰝚 ", dir: " ", marker: "* ", ellipsis: "..."),
+        progress_bar: (
+            symbols: ["█", "█", "█"],
+            track_style: (fg: "#333333"),
+            elapsed_style: (fg: "#b3c7cc"),
+            thumb_style: (fg: "#b3c7cc"),
+        ),
+        scrollbar: (
+            symbols: ["", "", "", ""],
+            track_style: (fg: "#333333"),
+            ends_style: (fg: "#333333"),
+            thumb_style: (fg: "#b3c7cc"),
+        ),
+        song_table_format: [
+            (
+                prop: (kind: Property(Title), style: (fg: "#c1c1c1"),
+                    highlighted_item_style: (fg: "#000000", modifiers: "Bold"),
+                    default: (kind: Property(Filename), style: (fg: "#333333"),)
+                ),
+                width: "70%",
+            ),
+            (
+                prop: (kind: Property(Album), style: (fg: "#333333"),
+                    default: (kind: Text("Unknown Album"), style: (fg: "#333333"))
+                ),
+                width: "30%",
+            ),
+        ],
+        layout: Split(
+            direction: Vertical,
+            panes: [
+                (
+                    size: "2",
+                    pane: Pane(Tabs),
+                ),
+                (
+                    size: "4",
+                    pane: Split(
+                        direction: Horizontal,
+                        panes: [
+                            (
+                                size: "100%",
+                                pane: Split(
+                                    direction: Vertical,
+                                    panes: [
+                                        (
+                                            size: "4",
+                                            borders: "ALL",
+                                            pane: Pane(Header),
+                                        ),
+                                    ]
+                                )
+                            ),
+                        ]
+                    ),
+                ),
+                (
+                    size: "100%",
+                    pane: Split(
+                        direction: Horizontal,
+                        panes: [
+                            (
+                                size: "100%",
+                                borders: "NONE",
+                                pane: Pane(TabContent),
+                            ),
+                        ]
+                    ),
+                ),
+                (
+                    size: "3",
+                    borders: "TOP | BOTTOM",
+                    pane: Pane(ProgressBar),
+                ),
+            ],
+        ),
+        header: (
+            rows: [
+                (
+                    left: [
+                        (kind: Property(Status(StateV2(playing_label: " ", paused_label: "❚❚", stopped_label: "❚❚"))), style: (fg: "#b3c7cc", modifiers: "Bold")),
+                    ],
+                    center: [
+                        (kind: Property(Song(Title)), style: (fg: "#c1c1c1", modifiers: "Bold"),
+                            default: (kind: Property(Song(Filename)), style: (fg: "#c1c1c1", modifiers: "Bold"))
+                        )
+                    ],
+                    right: [
+                        (kind: Text("Vol: "), style: (fg: "#b3c7cc", modifiers: "Bold")),
+                        (kind: Property(Status(Volume)), style: (fg: "#b3c7cc", modifiers: "Bold")),
+                        (kind: Text("% "), style: (fg: "#b3c7cc", modifiers: "Bold"))
+                    ]
+                ),
+                (
+                    left: [
+                        (kind: Property(Status(Elapsed)), style: (fg: "#c1c1c1")),
+                        (kind: Text("/"), style: (fg: "#333333")),
+                        (kind: Property(Status(Duration)), style: (fg: "#c1c1c1")),
+                    ],
+                    center: [
+                        (kind: Property(Song(Artist)), style: (fg: "#5f8787", modifiers: "Bold"),
+                            default: (kind: Text("Unknown Artist"), style: (fg: "#333333", modifiers: ""))
+                        ),
+                    ],
+                    right: [
+                        (
+                            kind: Property(Widget(States(
+                                active_style: (fg: "#b3c7cc", modifiers: "Bold"),
+                                separator_style: (fg: "#333333")))
+                            ),
+                            style: (fg: "#333333")
+                        ),
+                    ]
+                ),
+            ],
+        ),
+        browser_song_format: [
+            (
+                kind: Group([
+                    (kind: Property(Track)),
+                    (kind: Text(" ")),
+                ])
+            ),
+            (
+                kind: Group([
+                    (kind: Property(Artist)),
+                    (kind: Text(" - ")),
+                    (kind: Property(Title)),
+                ]),
+                default: (kind: Property(Filename))
+            ),
+        ],
+    )
+  '';
+
+  # Writes rmpc's theme from Noctalia's palette. Noctalia renders the GTK 4 stylesheet, which
+  # holds the same named colours the other apps use. This script only writes a file that rmpc
+  # owns, so it never touches Noctalia's files.
+  syncTheme = pkgs.writeShellScript "rmpc-sync-theme" ''
+    export PATH=${lib.makeBinPath [ pkgs.gnugrep pkgs.gnused pkgs.coreutils ]}:$PATH
+    src="$HOME/.config/gtk-4.0/noctalia.css"
+    [ -r "$src" ] || exit 0
+
+    colour() { grep -m1 "@define-color $1 " "$src" | grep -oE '#[0-9a-fA-F]{6}' | head -n1; }
+    text=$(colour window_fg_color)
+    accent=$(colour accent_color)
+    accent_fg=$(colour accent_fg_color)
+    dim=$(colour headerbar_bg_color)
+    [ -n "$text" ] && [ -n "$accent" ] && [ -n "$accent_fg" ] && [ -n "$dim" ] || exit 0
+
+    out="$HOME/.config/rmpc/themes/theme.ron"
+    mkdir -p "$(dirname "$out")"
+    sed -e "s/#c1c1c1/$text/g" -e "s/#b3c7cc/$accent/g" -e "s/#000000/$accent_fg/g" \
+        -e "s/#333333/$dim/g" -e "s/#5f8787/$accent/g" "${pkgs.writeText "rmpc-theme.ron.in" template}" > "$out.tmp" \
+      && mv "$out.tmp" "$out"
+  '';
+in
 {
   flake.modules.homeManager.rmpc = { pkgs, ... }: {
     home.packages = with pkgs; [
@@ -5,165 +185,8 @@
       cava
     ];
 
-    # The theme file sets the colours, the highlight styles and the pane layout. It's ported
-    # from vyrx-dev/nix-config. rmpc loads it by name from ~/.config/rmpc/themes/.
-    xdg.configFile."rmpc/themes/theme.ron".text = ''
-      #![enable(implicit_some)]
-      #![enable(unwrap_newtypes)]
-      #![enable(unwrap_variant_newtypes)]
-      (
-          default_album_art_path: None,
-          show_song_table_header: false,
-          draw_borders: true,
-          browser_column_widths: [20, 38, 42],
-          text_color: "#c1c1c1",
-          tab_bar: (
-              enabled: true,
-              active_style: (fg: "#c1c1c1", bg: "#000000", modifiers: "Bold"),
-              inactive_style: (fg: "#333333", modifiers: ""),
-          ),
-          highlighted_item_style: (fg: "#b3c7cc", modifiers: "Bold"),
-          current_item_style: (fg: "#000000", bg: "#b3c7cc", modifiers: "Bold"),
-          borders_style: (fg: "#333333", modifiers: ""),
-          highlight_border_style: (fg: "#b3c7cc"),
-          symbols: (song: "󰝚 ", dir: " ", marker: "* ", ellipsis: "..."),
-          progress_bar: (
-              symbols: ["█", "█", "█"],
-              track_style: (fg: "#333333"),
-              elapsed_style: (fg: "#b3c7cc"),
-              thumb_style: (fg: "#b3c7cc"),
-          ),
-          scrollbar: (
-              symbols: ["", "", "", ""],
-              track_style: (fg: "#333333"),
-              ends_style: (fg: "#333333"),
-              thumb_style: (fg: "#b3c7cc"),
-          ),
-          song_table_format: [
-              (
-                  prop: (kind: Property(Title), style: (fg: "#c1c1c1"),
-                      highlighted_item_style: (fg: "#000000", modifiers: "Bold"),
-                      default: (kind: Property(Filename), style: (fg: "#333333"),)
-                  ),
-                  width: "70%",
-              ),
-              (
-                  prop: (kind: Property(Album), style: (fg: "#333333"),
-                      default: (kind: Text("Unknown Album"), style: (fg: "#333333"))
-                  ),
-                  width: "30%",
-              ),
-          ],
-          layout: Split(
-              direction: Vertical,
-              panes: [
-                  (
-                      size: "3",
-                      pane: Pane(Tabs),
-                  ),
-                  (
-                      size: "4",
-                      pane: Split(
-                          direction: Horizontal,
-                          panes: [
-                              (
-                                  size: "100%",
-                                  pane: Split(
-                                      direction: Vertical,
-                                      panes: [
-                                          (
-                                              size: "4",
-                                              borders: "ALL",
-                                              pane: Pane(Header),
-                                          ),
-                                      ]
-                                  )
-                              ),
-                          ]
-                      ),
-                  ),
-                  (
-                      size: "100%",
-                      pane: Split(
-                          direction: Horizontal,
-                          panes: [
-                              (
-                                  size: "100%",
-                                  borders: "NONE",
-                                  pane: Pane(TabContent),
-                              ),
-                          ]
-                      ),
-                  ),
-                  (
-                      size: "3",
-                      borders: "TOP | BOTTOM",
-                      pane: Pane(ProgressBar),
-                  ),
-              ],
-          ),
-          header: (
-              rows: [
-                  (
-                      left: [
-                          (kind: Property(Status(StateV2(playing_label: " ", paused_label: "❚❚", stopped_label: "❚❚"))), style: (fg: "#b3c7cc", modifiers: "Bold")),
-                      ],
-                      center: [
-                          (kind: Property(Song(Title)), style: (fg: "#c1c1c1", modifiers: "Bold"),
-                              default: (kind: Property(Song(Filename)), style: (fg: "#c1c1c1", modifiers: "Bold"))
-                          )
-                      ],
-                      right: [
-                          (kind: Text("Vol: "), style: (fg: "#b3c7cc", modifiers: "Bold")),
-                          (kind: Property(Status(Volume)), style: (fg: "#b3c7cc", modifiers: "Bold")),
-                          (kind: Text("% "), style: (fg: "#b3c7cc", modifiers: "Bold"))
-                      ]
-                  ),
-                  (
-                      left: [
-                          (kind: Property(Status(Elapsed)), style: (fg: "#c1c1c1")),
-                          (kind: Text("/"), style: (fg: "#333333")),
-                          (kind: Property(Status(Duration)), style: (fg: "#c1c1c1")),
-                      ],
-                      center: [
-                          (kind: Property(Song(Artist)), style: (fg: "#5f8787", modifiers: "Bold"),
-                              default: (kind: Text("Unknown Artist"), style: (fg: "#333333", modifiers: ""))
-                          ),
-                      ],
-                      right: [
-                          (
-                              kind: Property(Widget(States(
-                                  active_style: (fg: "#b3c7cc", modifiers: "Bold"),
-                                  separator_style: (fg: "#333333")))
-                              ),
-                              style: (fg: "#333333")
-                          ),
-                      ]
-                  ),
-              ],
-          ),
-          browser_song_format: [
-              (
-                  kind: Group([
-                      (kind: Property(Track)),
-                      (kind: Text(" ")),
-                  ])
-              ),
-              (
-                  kind: Group([
-                      (kind: Property(Artist)),
-                      (kind: Text(" - ")),
-                      (kind: Property(Title)),
-                  ]),
-                  default: (kind: Property(Filename))
-              ),
-          ],
-      )
-    '';
-
-    # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't write
-    # to the SSD. album_art is 600 px rather than 1200: a smaller cover decodes faster on each
-    # track change, and still looks sharp in the panel. theme points at the file above.
+    # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't write to
+    # the SSD. album_art is 600 px: a smaller cover decodes faster on each track change.
     xdg.configFile."rmpc/config.ron".text = ''
       #![enable(implicit_some)]
       #![enable(unwrap_newtypes)]
@@ -423,5 +446,22 @@
           ],
       )
     '';
+
+    # Generate the theme on every switch, and again whenever Noctalia rewrites its palette.
+    home.activation.rmpcTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] "${syncTheme}";
+
+    systemd.user.paths.rmpc-theme = {
+      Unit.Description = "Watch Noctalia's palette for rmpc";
+      Path.PathChanged = "%h/.config/gtk-4.0/noctalia.css";
+      Install.WantedBy = [ "default.target" ];
+    };
+
+    systemd.user.services.rmpc-theme = {
+      Unit.Description = "Write rmpc's theme from Noctalia's palette";
+      Service = {
+        Type = "oneshot";
+        ExecStart = "${syncTheme}";
+      };
+    };
   };
 }
