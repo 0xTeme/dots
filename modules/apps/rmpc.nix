@@ -159,11 +159,13 @@
         )
       '';
 
-      # Writes rmpc's theme from Noctalia's palette. Noctalia renders the GTK 4 stylesheet, which
-      # holds the same named colours the other apps use. This script only writes a file that rmpc
-      # owns, so it never touches Noctalia's files.
+      # Writes rmpc's theme from Noctalia's palette. Noctalia writes its palette in several steps,
+      # so the script waits a second for the last write to land. It then replaces the theme file
+      # only when the colours changed. Every replacement makes rmpc rebuild its interface, which
+      # blanks the album art, so an unchanged palette must not touch the file.
       syncTheme = pkgs.writeShellScript "rmpc-sync-theme" ''
         export PATH=${lib.makeBinPath [ pkgs.gnugrep pkgs.gnused pkgs.coreutils ]}:$PATH
+        sleep 1
         src="$HOME/.config/gtk-4.0/noctalia.css"
         [ -r "$src" ] || exit 0
 
@@ -175,10 +177,15 @@
         [ -n "$text" ] && [ -n "$accent" ] && [ -n "$accent_fg" ] && [ -n "$dim" ] || exit 0
 
         out="$HOME/.config/rmpc/themes/theme.ron"
+        tmp="$out.tmp"
         mkdir -p "$(dirname "$out")"
         sed -e "s/#c1c1c1/$text/g" -e "s/#b3c7cc/$accent/g" -e "s/#000000/$accent_fg/g" \
-            -e "s/#333333/$dim/g" -e "s/#5f8787/$accent/g" "${pkgs.writeText "rmpc-theme.ron.in" template}" > "$out.tmp" \
-          && mv "$out.tmp" "$out"
+            -e "s/#333333/$dim/g" -e "s/#5f8787/$accent/g" "${pkgs.writeText "rmpc-theme.ron.in" template}" > "$tmp"
+        if cmp -s "$tmp" "$out"; then
+          rm -f "$tmp"
+        else
+          mv "$tmp" "$out"
+        fi
       '';
     in
     {
@@ -449,8 +456,7 @@
         )
       '';
 
-      # Keeps rmpc's theme in step with Noctalia: runs at login, and again whenever Noctalia
-      # rewrites its palette.
+      # Keeps rmpc's theme in step with Noctalia: runs at login, and when Noctalia rewrites its palette.
       systemd.user.paths.rmpc-theme = {
         Unit.Description = "Watch Noctalia's palette for rmpc";
         Path.PathChanged = "%h/.config/gtk-4.0/noctalia.css";
