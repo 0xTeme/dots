@@ -449,9 +449,8 @@
         )
       '';
 
-      # Generate the theme on every switch, and again whenever Noctalia rewrites its palette.
-      home.activation.rmpcTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] "${syncTheme}";
-
+      # Keeps rmpc's theme in step with Noctalia: runs at login, and again whenever Noctalia
+      # rewrites its palette.
       systemd.user.paths.rmpc-theme = {
         Unit.Description = "Watch Noctalia's palette for rmpc";
         Path.PathChanged = "%h/.config/gtk-4.0/noctalia.css";
@@ -460,6 +459,7 @@
 
       systemd.user.services.rmpc-theme = {
         Unit.Description = "Write rmpc's theme from Noctalia's palette";
+        Install.WantedBy = [ "default.target" ];
         Service = {
           Type = "oneshot";
           ExecStart = "${syncTheme}";
