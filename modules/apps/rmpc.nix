@@ -5,6 +5,10 @@
       cava
     ];
 
+    # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't
+    # write to the SSD. It's cleared at logout, which is fine for a cache.
+    # album_art max_size_px is 600 rather than 1200: each track change decodes the cover,
+    # and a smaller cover costs less CPU and battery, and still looks sharp in the panel.
     xdg.configFile."rmpc/config.ron".text = ''
       #![enable(implicit_some)]
       #![enable(unwrap_newtypes)]
@@ -13,7 +17,7 @@
           address: "127.0.0.1:6600",
           password: None,
           theme: Some("default"),
-          cache_dir: None,
+          cache_dir: Some("/run/user/1000/rmpc"),
           on_song_change: None,
           volume_step: 5,
           max_fps: 30,
@@ -34,7 +38,7 @@
           auto_open_downloads: true,
           album_art: (
               method: Auto,
-              max_size_px: (width: 1200, height: 1200),
+              max_size_px: (width: 600, height: 600),
               disabled_protocols: ["http://", "https://"],
               vertical_align: Center,
               horizontal_align: Center,
