@@ -159,11 +159,12 @@
         )
       '';
 
-      # Renders the theme from Noctalia's palette, then applies it to any running rmpc without a
-      # config reload. Noctalia writes its palette in several steps, so the script waits a second
-      # for the last write. Nothing happens unless the colours actually changed.
+      # Renders the theme from Noctalia's palette, then applies it to the running rmpc. The remote
+      # command is given the live instance's PID, because without one it tries every socket it finds,
+      # and stale sockets from closed instances refuse the connection. Nothing happens if colours
+      # haven't changed, or if rmpc isn't running.
       syncTheme = pkgs.writeShellScript "rmpc-sync-theme" ''
-        export PATH=${lib.makeBinPath [ pkgs.gnugrep pkgs.gnused pkgs.coreutils ]}:$PATH
+        export PATH=${lib.makeBinPath [ pkgs.gnugrep pkgs.gnused pkgs.coreutils pkgs.procps ]}:$PATH
         sleep 1
         src="$HOME/.config/gtk-4.0/noctalia.css"
         [ -r "$src" ] || exit 0
@@ -188,8 +189,11 @@
         fi
 
         mv "$tmp" "$out"
-        # Apply to running rmpc instances in place. Errors are ignored, since rmpc may not be open.
-        ${pkgs.rmpc}/bin/rmpc remote set theme - < "$out" 2>/dev/null || true
+
+        # Apply to the live instance only. pgrep -x matches the exact process name, so the
+        # wrapper script and this shell are not picked up.
+        pid=$(pgrep -xn rmpc) || exit 0
+        ${pkgs.rmpc}/bin/rmpc remote --pid "$pid" set theme "$out" || true
       '';
     in
     {
@@ -200,7 +204,7 @@
 
       # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't write to
       # the SSD. album_art is 600 px: a smaller cover decodes faster on each track change.
-      # enable_config_hot_reload stays off: a palette change is applied with `rmpc remote set theme`
+      # enable_config_hot_reload stays off: the palette is applied with `rmpc remote set theme`
       # instead, which swaps the theme without reloading the config.
       xdg.configFile."rmpc/config.ron".text = ''
         #![enable(implicit_some)]
