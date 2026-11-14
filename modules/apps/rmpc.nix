@@ -161,8 +161,7 @@
 
       # Writes rmpc's theme from Noctalia's palette. Noctalia writes its palette in several steps,
       # so the script waits a second for the last write to land. It then replaces the theme file
-      # only when the colours changed. Every replacement makes rmpc rebuild its interface, which
-      # blanks the album art, so an unchanged palette must not touch the file.
+      # only when the colours changed.
       syncTheme = pkgs.writeShellScript "rmpc-sync-theme" ''
         export PATH=${lib.makeBinPath [ pkgs.gnugrep pkgs.gnused pkgs.coreutils ]}:$PATH
         sleep 1
@@ -196,6 +195,8 @@
 
       # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't write to
       # the SSD. album_art is 600 px: a smaller cover decodes faster on each track change.
+      # enable_config_hot_reload is off: rmpc reads the theme when it starts, so a palette change
+      # can't rebuild the interface mid-song. After a wallpaper change, restart rmpc once.
       xdg.configFile."rmpc/config.ron".text = ''
         #![enable(implicit_some)]
         #![enable(unwrap_newtypes)]
@@ -212,7 +213,7 @@
             wrap_navigation: false,
             enable_mouse: true,
             scroll_amount: 1,
-            enable_config_hot_reload: true,
+            enable_config_hot_reload: false,
             enable_lyrics_hot_reload: false,
             status_update_interval_ms: 1000,
             rewind_to_start_sec: None,
@@ -456,7 +457,7 @@
         )
       '';
 
-      # Keeps rmpc's theme in step with Noctalia: runs at login, and when Noctalia rewrites its palette.
+      # Keeps rmpc's theme file current with Noctalia: runs at login, and when Noctalia rewrites its palette.
       systemd.user.paths.rmpc-theme = {
         Unit.Description = "Watch Noctalia's palette for rmpc";
         Path.PathChanged = "%h/.config/gtk-4.0/noctalia.css";
