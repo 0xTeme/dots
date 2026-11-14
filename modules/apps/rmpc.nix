@@ -159,9 +159,9 @@
         )
       '';
 
-      # Writes rmpc's theme from Noctalia's palette. Noctalia writes its palette in several steps,
-      # so the script waits a second for the last write to land. It then replaces the theme file
-      # only when the colours changed.
+      # Renders the theme from Noctalia's palette, then applies it to any running rmpc without a
+      # config reload. Noctalia writes its palette in several steps, so the script waits a second
+      # for the last write. Nothing happens unless the colours actually changed.
       syncTheme = pkgs.writeShellScript "rmpc-sync-theme" ''
         export PATH=${lib.makeBinPath [ pkgs.gnugrep pkgs.gnused pkgs.coreutils ]}:$PATH
         sleep 1
@@ -180,11 +180,16 @@
         mkdir -p "$(dirname "$out")"
         sed -e "s/#c1c1c1/$text/g" -e "s/#b3c7cc/$accent/g" -e "s/#000000/$accent_fg/g" \
             -e "s/#333333/$dim/g" -e "s/#5f8787/$accent/g" "${pkgs.writeText "rmpc-theme.ron.in" template}" > "$tmp"
+
+        # Unchanged palette: leave the file and the running rmpc alone.
         if cmp -s "$tmp" "$out"; then
           rm -f "$tmp"
-        else
-          mv "$tmp" "$out"
+          exit 0
         fi
+
+        mv "$tmp" "$out"
+        # Apply to running rmpc instances in place. Errors are ignored, since rmpc may not be open.
+        ${pkgs.rmpc}/bin/rmpc remote set theme - < "$out" 2>/dev/null || true
       '';
     in
     {
@@ -195,8 +200,8 @@
 
       # cache_dir sits on /run/user, a RAM filesystem, so cached covers and metadata don't write to
       # the SSD. album_art is 600 px: a smaller cover decodes faster on each track change.
-      # enable_config_hot_reload is off: rmpc reads the theme when it starts, so a palette change
-      # can't rebuild the interface mid-song. After a wallpaper change, restart rmpc once.
+      # enable_config_hot_reload stays off: a palette change is applied with `rmpc remote set theme`
+      # instead, which swaps the theme without reloading the config.
       xdg.configFile."rmpc/config.ron".text = ''
         #![enable(implicit_some)]
         #![enable(unwrap_newtypes)]
@@ -457,7 +462,7 @@
         )
       '';
 
-      # Keeps rmpc's theme file current with Noctalia: runs at login, and when Noctalia rewrites its palette.
+      # Keeps rmpc's theme current with Noctalia: runs at login, and when Noctalia rewrites its palette.
       systemd.user.paths.rmpc-theme = {
         Unit.Description = "Watch Noctalia's palette for rmpc";
         Path.PathChanged = "%h/.config/gtk-4.0/noctalia.css";
@@ -465,7 +470,7 @@
       };
 
       systemd.user.services.rmpc-theme = {
-        Unit.Description = "Write rmpc's theme from Noctalia's palette";
+        Unit.Description = "Apply Noctalia's palette to rmpc";
         Install.WantedBy = [ "default.target" ];
         Service = {
           Type = "oneshot";
