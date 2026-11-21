@@ -1,13 +1,14 @@
 {
   # Flip mode for the 2-in-1. niri raises the tablet-mode switch events, and niri-flip on or off
-  # runs the on-screen keyboard and the auto-rotation together. Nothing runs during normal laptop
-  # use. Auto-rotation reads the accelerometer's raw axes directly from sysfs, so it needs no
-  # daemon, and it only calls niri when the orientation changes.
+  # runs the on-screen keyboard, the auto-rotation, the touchscreen and the gesture service together.
+  # Nothing runs during normal laptop use. Touch is switched off at login, and this module turns it
+  # on when folded, by clearing the same toggles file niri-toggle-touch uses.
   flake.modules.nixos.tablet-mode = { pkgs, ... }:
     let
       setsid = "${pkgs.util-linux}/bin/setsid";
       pgrep = "${pkgs.procps}/bin/pgrep";
       pkill = "${pkgs.procps}/bin/pkill";
+      systemctl = "${pkgs.systemd}/bin/systemctl";
       kbd = "${pkgs.wvkbd}/bin/wvkbd-mobintl";
       niri = "${pkgs.niri}/bin/niri";
 
@@ -103,10 +104,23 @@
         esac
       '';
 
+      # The touch-off override is a file niri includes. An empty file means touch is on, which is
+      # the same state niri-toggle-touch produces. Writing the override back turns touch off again.
       flip = pkgs.writeShellScriptBin "niri-flip" ''
+        toggles="$HOME/.config/niri/toggles.kdl"
         case "''${1:-}" in
-          on) niri-osk show; niri-rotate start ;;
-          off) niri-osk hide; niri-rotate stop ;;
+          on)
+            : > "$toggles"
+            niri-osk show
+            niri-rotate start
+            ${systemctl} --user start lisgd.service
+            ;;
+          off)
+            ${systemctl} --user stop lisgd.service
+            niri-rotate stop
+            niri-osk hide
+            printf 'input {\n    touch {\n        off\n    }\n}\n' > "$toggles"
+            ;;
           *)
             echo "usage: niri-flip on|off" >&2
             exit 2

@@ -1,10 +1,9 @@
 {
   # Multi-finger gestures for the touchscreen, without patching niri. lisgd reads the touch device
-  # directly from its raw events and runs a niri action when a gesture completes. It only blocks
-  # on the device between touches, so it costs almost nothing while idle. The device is the
-  # Wacom HID 4840 Finger node (event14); the stylus on the same panel is event13 and is not used.
-  # Your user joins the input group to read the device without running anything as root. The
-  # service is tied to niri, so it starts and stops with the session.
+  # directly from its raw events and runs a niri action when a gesture completes. It isn't enabled
+  # at login: niri-flip starts it when the laptop folds into tablet mode, and stops it on unfold, so
+  # it never runs in laptop use. The device is the Wacom HID 4840 Finger node (event14). Your user
+  # joins the input group to read it without running anything as root.
   flake.modules.nixos.touch-gestures = { pkgs, ... }: {
     users.users.teme.extraGroups = [ "input" ];
 
@@ -29,7 +28,6 @@
         '';
         Restart = "on-failure";
       };
-      Install.WantedBy = [ "niri.service" ];
     };
   };
 }
