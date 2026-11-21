@@ -40,6 +40,7 @@
       virtualization
       hotspot
       video-wallpaper
+      tablet-mode
     ];
   };
 

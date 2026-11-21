@@ -30,6 +30,13 @@ input {
     }
 }
 
+// Flip mode. niri raises these from the laptop's tablet-mode switch, so the keyboard only
+// appears when the laptop is folded into a tablet, and nothing runs in normal laptop use.
+switch-events {
+    tablet-mode-on { spawn "niri-osk" "show"; }
+    tablet-mode-off { spawn "niri-osk" "hide"; }
+}
+
 binds {
     // The old bind called swaylock, which is not installed. Noctalia has its own lock screen.
     Super+Alt+L hotkey-overlay-title="Lock the Screen: Noctalia" { spawn "noctalia" "msg" "session" "lock"; }
@@ -61,6 +68,9 @@ binds {
     Mod+Shift+M hotkey-overlay-title="Music: rmpc" { spawn "foot" "--app-id=rmpc-floating" "-e" "rmpc"; }
     Mod+Ctrl+Shift+B hotkey-overlay-title="System Monitor: btop" { spawn "foot" "--app-id=btop-floating" "-e" "btop"; }
     Mod+Ctrl+Shift+T hotkey-overlay-title="Typing Practice: smassh" { spawn "foot" "--app-id=typing-floating" "-e" "smassh"; }
+
+    // Toggles the on-screen keyboard by hand, for when you want it without flipping.
+    Mod+Ctrl+K hotkey-overlay-title="On-screen keyboard" { spawn "niri-osk" "toggle"; }
 
     Mod+Alt+Space hotkey-overlay-title="Media: play or pause" { spawn-sh "playerctl play-pause"; }
     Mod+Alt+Left hotkey-overlay-title="Media: previous track" { spawn-sh "playerctl previous"; }
