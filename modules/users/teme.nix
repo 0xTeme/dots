@@ -54,7 +54,6 @@ in
           nh
           udiskie
           qt
-          video-wallpaper
           touch-gestures
         ];
 
