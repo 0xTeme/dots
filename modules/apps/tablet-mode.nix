@@ -1,15 +1,15 @@
 {
   # Flip mode for the 2-in-1. niri raises the tablet-mode switch events, and niri-flip on or off
-  # runs the keyboard and the rotation together. Nothing runs during normal laptop use: the
-  # accelerometer is claimed only while the laptop is folded into a tablet.
+  # runs the on-screen keyboard and the auto-rotation together. Nothing runs during normal laptop
+  # use. Auto-rotation reads the accelerometer's raw axes directly from sysfs, so it needs no
+  # daemon, and it only calls niri when the orientation changes.
   flake.modules.nixos.tablet-mode = { pkgs, ... }:
     let
-      gdbus = "${pkgs.glib}/bin/gdbus";
-      niri = "${pkgs.niri}/bin/niri";
       setsid = "${pkgs.util-linux}/bin/setsid";
       pgrep = "${pkgs.procps}/bin/pgrep";
       pkill = "${pkgs.procps}/bin/pkill";
       kbd = "${pkgs.wvkbd}/bin/wvkbd-mobintl";
+      niri = "${pkgs.niri}/bin/niri";
 
       osk = pkgs.writeShellScriptBin "niri-osk" ''
         # Absolute store paths, so niri's spawn environment can't change what runs.
@@ -29,41 +29,57 @@
         esac
       '';
 
-      # Follows the accelerometer and sets the screen's transform to match. It runs in its own
-      # session so stop can signal the whole group, including the gdbus monitor child.
+      # Reads the accelerometer's raw axes and rotates the screen to match gravity. The mapping
+      # comes from measurements on this laptop: phone upright is +x (90), phone upside down is -x
+      # (270), landscape upright is -y (normal), landscape upside down is +y (180). A flat laptop
+      # has z dominant, so the screen is left where it is. A new orientation must hold for two
+      # samples before it's applied, which stops flicker near the edges.
       rotate = pkgs.writeShellScriptBin "niri-rotate" ''
-        dest=net.hadess.SensorProxy
-        path=/net/hadess/SensorProxy
         out=eDP-1
         pidfile="''${XDG_RUNTIME_DIR:-/tmp}/niri-rotate.pid"
 
-        # Maps the sensor's orientation to niri's output transform. Checked with a manual
-        # transform test. If the screen turns the wrong way on a flip, swap 90 and 270.
+        find_accel() {
+          local d n
+          for d in /sys/bus/iio/devices/iio:device*; do
+            read -r n < "$d/name" 2>/dev/null || continue
+            if [ "$n" = accel_3d ]; then echo "$d"; return 0; fi
+          done
+          return 1
+        }
+
         transform_for() {
-          case "$1" in
-            normal) echo normal ;;
-            bottom-up) echo 180 ;;
-            left-up) echo 90 ;;
-            right-up) echo 270 ;;
-            *) return 1 ;;
-          esac
+          local x=$1 y=$2 z=$3 ax ay az
+          ax=$x; ay=$y; az=$z
+          (( ax < 0 )) && ax=$(( -ax ))
+          (( ay < 0 )) && ay=$(( -ay ))
+          (( az < 0 )) && az=$(( -az ))
+          if (( ax > ay && ax > az )); then
+            if (( x > 0 )); then echo 90; else echo 270; fi
+          elif (( ay > az )); then
+            if (( y < 0 )); then echo normal; else echo 180; fi
+          fi
         }
 
         run() {
           echo "$$" > "$pidfile"
           trap 'exit 0' TERM INT
-          trap '${gdbus} call --system --dest $dest --object-path $path --method $dest.ReleaseAccelerometer >/dev/null 2>&1; rm -f "$pidfile"' EXIT
+          trap 'rm -f "$pidfile"; ${niri} msg output "$out" transform normal >/dev/null 2>&1' EXIT
 
-          ${gdbus} call --system --dest "$dest" --object-path "$path" --method "$dest.ClaimAccelerometer" >/dev/null || exit 1
-
-          ${gdbus} monitor --system --dest "$dest" --object-path "$path" | while read -r line; do
-            case "$line" in
-              *AccelerometerOrientation*) ;;
-              *) continue ;;
-            esac
-            o=$(printf '%s\n' "$line" | grep -o "<'[a-z-]*'>" | head -n1 | tr -d "<>'")
-            t=$(transform_for "$o") || continue
-            ${niri} msg output "$out" transform "$t" >/dev/null 2>&1
+          dev=$(find_accel) || exit 1
+          cur=""; pend=""; n=0
+          while :; do
+            read -r x < "$dev/in_accel_x_raw"
+            read -r y < "$dev/in_accel_y_raw"
+            read -r z < "$dev/in_accel_z_raw"
+            cand=$(transform_for "$x" "$y" "$z")
+            if [ -n "$cand" ] && [ "$cand" != "$cur" ]; then
+              if [ "$cand" = "$pend" ]; then n=$((n + 1)); else pend=$cand; n=1; fi
+              if [ "$n" -ge 2 ]; then
+                ${niri} msg output "$out" transform "$cand" >/dev/null 2>&1 && cur=$cand
+                pend=""; n=0
+              fi
+            fi
+            sleep 0.5
           done
         }
 
@@ -99,12 +115,8 @@
       '';
     in
     {
-      # iio-sensor-proxy exposes the accelerometer over D-Bus. It starts on demand when claimed.
-      hardware.sensor.iio.enable = true;
-
       environment.systemPackages = [
         pkgs.wvkbd
-        pkgs.glib
         osk
         rotate
         flip
