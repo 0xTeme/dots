@@ -30,11 +30,11 @@ input {
     }
 }
 
-// Flip mode. niri raises these from the laptop's tablet-mode switch, so the keyboard only
-// appears when the laptop is folded into a tablet, and nothing runs in normal laptop use.
+// Flip mode. niri raises these from the laptop's tablet-mode switch. niri-flip starts or stops
+// the on-screen keyboard and the auto-rotation together, so nothing runs in normal laptop use.
 switch-events {
-    tablet-mode-on { spawn "niri-osk" "show"; }
-    tablet-mode-off { spawn "niri-osk" "hide"; }
+    tablet-mode-on { spawn "niri-flip" "on"; }
+    tablet-mode-off { spawn "niri-flip" "off"; }
 }
 
 binds {
