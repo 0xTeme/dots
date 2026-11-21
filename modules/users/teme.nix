@@ -54,6 +54,8 @@ in
           nh
           udiskie
           qt
+          video-wallpaper
+          touch-gestures
         ];
 
         home.stateVersion = "26.05";

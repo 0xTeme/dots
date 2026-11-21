@@ -41,6 +41,7 @@
       hotspot
       video-wallpaper
       tablet-mode
+      touch-gestures
     ];
   };
 
