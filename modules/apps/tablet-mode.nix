@@ -6,9 +6,11 @@
   flake.modules.nixos.tablet-mode = { pkgs, ... }:
     let
       setsid = "${pkgs.util-linux}/bin/setsid";
+      logger = "${pkgs.util-linux}/bin/logger";
       pgrep = "${pkgs.procps}/bin/pgrep";
       pkill = "${pkgs.procps}/bin/pkill";
       grep = "${pkgs.gnugrep}/bin/grep";
+      sleep = "${pkgs.coreutils}/bin/sleep";
       systemctl = "${pkgs.systemd}/bin/systemctl";
       kbd = "${pkgs.wvkbd}/bin/wvkbd-mobintl";
       niri = "${pkgs.niri}/bin/niri";
@@ -17,7 +19,8 @@
       # change (see niri-osk refresh). Roles follow the surface model: the background and the key
       # fill are surface tones, the key text is the foreground, and special keys use the accent.
       # Each role tries a few names, so one missing name doesn't break the keyboard. -R 0 keeps the
-      # corners sharp. -H and -L are the phone-hold and landscape heights, in pixels.
+      # corners sharp. -H and -L are the phone-hold and landscape heights, in pixels. The frosted
+      # background comes from a niri layer-rule (see config.kdl), not from this script.
       osk = pkgs.writeShellScriptBin "niri-osk" ''
         src="$HOME/.config/gtk-4.0/noctalia.css"
         colour() {
@@ -50,11 +53,26 @@
         }
         stop() { ${pkill} -x wvkbd-mobintl 2>/dev/null || true; }
 
+        # Waits for the old keyboard to exit before starting the new one. Starting too early leaves
+        # the old process alive, so the new start is skipped and the old one dies a moment later.
+        restart() {
+          stop
+          i=0
+          while running && [ "$i" -lt 20 ]; do ${sleep} 0.1; i=$((i + 1)); done
+          running && ${pkill} -KILL -x wvkbd-mobintl 2>/dev/null
+          start
+        }
+
         case "''${1:-toggle}" in
           show) start ;;
           hide) stop ;;
           toggle) if running; then stop; else start; fi ;;
-          refresh) if running; then stop; sleep 0.3; start; fi ;;
+          refresh)
+            if running; then
+              restart
+              ${logger} -t niri-osk "keyboard refreshed with the current palette"
+            fi
+            ;;
           *)
             echo "usage: niri-osk show|hide|toggle|refresh" >&2
             exit 2
@@ -133,7 +151,7 @@
                 pend=""; n=0
               fi
             fi
-            sleep 0.5
+            ${sleep} 0.5
           done
         }
 

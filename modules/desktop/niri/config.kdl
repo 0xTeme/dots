@@ -108,6 +108,17 @@ window-rule {
     default-window-height { fixed 600; }
 }
 
+// The on-screen keyboard is a frosted, slightly transparent strip, like the windows. Its
+// layer-shell namespace is "wvkbd". Niri blurs everything behind the surface, so the keyboard
+// follows the wallpaper and the palette the same way the windows do.
+layer-rule {
+    match namespace="^wvkbd$"
+    opacity 0.9
+    background-effect {
+        blur true
+    }
+}
+
 // Show a blurred, dimmed copy of the wallpaper in the overview (Super+O).
 // Noctalia's docs call this layer "noctalia-backdrop" in v5 (was "noctalia-overview" in v4).
 layer-rule {
