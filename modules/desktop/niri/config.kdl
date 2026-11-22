@@ -108,12 +108,12 @@ window-rule {
     default-window-height { fixed 600; }
 }
 
-// The on-screen keyboard is a frosted, slightly transparent strip, like the windows. Its
-// layer-shell namespace is "wvkbd". Niri blurs everything behind the surface, so the keyboard
-// follows the wallpaper and the palette the same way the windows do.
+// The on-screen keyboard follows the windows. Its layer-shell namespace is "wvkbd". At 0.85
+// opacity it matches the window rule above, so with transparency on the two look the same. The
+// blur and transparency toggles override this rule when they're off.
 layer-rule {
     match namespace="^wvkbd$"
-    opacity 0.9
+    opacity 0.85
     background-effect {
         blur true
     }

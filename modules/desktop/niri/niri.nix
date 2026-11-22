@@ -27,34 +27,36 @@
         (pkgs.writeShellScriptBin "niri-disable-touch" ''
           printf '${touchOffContent}' > "$HOME/.config/niri/toggles.kdl"
         '')
-      (pkgs.writeShellScriptBin "niri-toggle-look" ''
-        arg="$1"
-        if [ "$arg" = "gaps" ]; then
-          f="$HOME/.config/niri/gaps.kdl"
-          off_content='layout {\n    gaps 0\n    struts {\n        left 4\n        right 4\n        top 4\n        bottom 4\n    }\n}\n'
-          title="Gaps"
-        elif [ "$arg" = "blur" ]; then
-          f="$HOME/.config/niri/blur.kdl"
-          off_content='window-rule {\n    background-effect {\n        blur false\n    }\n}\n'
-          title="Blur"
-        elif [ "$arg" = "transparency" ]; then
-          f="$HOME/.config/niri/transparency.kdl"
-          off_content='window-rule {\n    opacity 1.0\n    background-effect {\n        blur false\n    }\n}\n'
-          title="Transparency"
-        else
-          exit 1
-        fi
+        # Blur and transparency also cover the on-screen keyboard, whose layer-shell namespace is
+        # "wvkbd". Its rule lives in config.kdl; these override it when the feature is off.
+        (pkgs.writeShellScriptBin "niri-toggle-look" ''
+          arg="$1"
+          if [ "$arg" = "gaps" ]; then
+            f="$HOME/.config/niri/gaps.kdl"
+            off_content='layout {\n    gaps 0\n    struts {\n        left 4\n        right 4\n        top 4\n        bottom 4\n    }\n}\n'
+            title="Gaps"
+          elif [ "$arg" = "blur" ]; then
+            f="$HOME/.config/niri/blur.kdl"
+            off_content='window-rule {\n    background-effect {\n        blur false\n    }\n}\nlayer-rule {\n    match namespace="^wvkbd$"\n    background-effect {\n        blur false\n    }\n}\n'
+            title="Blur"
+          elif [ "$arg" = "transparency" ]; then
+            f="$HOME/.config/niri/transparency.kdl"
+            off_content='window-rule {\n    opacity 1.0\n    background-effect {\n        blur false\n    }\n}\nlayer-rule {\n    match namespace="^wvkbd$"\n    opacity 1.0\n    background-effect {\n        blur false\n    }\n}\n'
+            title="Transparency"
+          else
+            exit 1
+          fi
 
-        if [ -s "$f" ]; then
-          : > "$f"
-          noctalia msg notification-show "$title enabled"
-        else
-          printf "$off_content" > "$f"
-          noctalia msg notification-show "$title disabled"
-        fi
-      '')
-    ];
-  };
+          if [ -s "$f" ]; then
+            : > "$f"
+            noctalia msg notification-show "$title enabled"
+          else
+            printf "$off_content" > "$f"
+            noctalia msg notification-show "$title disabled"
+          fi
+        '')
+      ];
+    };
 
   flake.modules.homeManager.niri = { lib, ... }: {
     # config.kdl is the entry point. It includes base.kdl, which in turn includes
