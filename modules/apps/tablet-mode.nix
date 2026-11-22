@@ -2,83 +2,15 @@
   # Flip mode for the 2-in-1. niri raises the tablet-mode switch events, and niri-flip on or off
   # runs the on-screen keyboard, the auto-rotation, the touchscreen and the gesture service together.
   # Nothing runs during normal laptop use. Touch is switched off at login, and this module turns it
-  # on when folded, by clearing the same toggles file niri-toggle-touch uses.
+  # on when folded, by clearing the same toggles file niri-toggle-touch uses. The keyboard itself
+  # lives in osk-theme.nix, as a user service.
   flake.modules.nixos.tablet-mode = { pkgs, ... }:
     let
       setsid = "${pkgs.util-linux}/bin/setsid";
-      logger = "${pkgs.util-linux}/bin/logger";
       pgrep = "${pkgs.procps}/bin/pgrep";
-      pkill = "${pkgs.procps}/bin/pkill";
-      grep = "${pkgs.gnugrep}/bin/grep";
       sleep = "${pkgs.coreutils}/bin/sleep";
       systemctl = "${pkgs.systemd}/bin/systemctl";
-      kbd = "${pkgs.wvkbd}/bin/wvkbd-mobintl";
       niri = "${pkgs.niri}/bin/niri";
-
-      # Colours come from Noctalia's palette, read when the keyboard starts and again on a palette
-      # change (see niri-osk refresh). Roles follow the surface model: the background and the key
-      # fill are surface tones, the key text is the foreground, and special keys use the accent.
-      # Each role tries a few names, so one missing name doesn't break the keyboard. -R 0 keeps the
-      # corners sharp. -H and -L are the phone-hold and landscape heights, in pixels. The frosted
-      # background comes from a niri layer-rule (see config.kdl), not from this script.
-      osk = pkgs.writeShellScriptBin "niri-osk" ''
-        src="$HOME/.config/gtk-4.0/noctalia.css"
-        colour() {
-          ${grep} -m1 "@define-color $1 " "$src" 2>/dev/null | ${grep} -oE '#[0-9a-fA-F]{6}' | head -n1 | tr -d '#'
-        }
-        pick() {
-          local n c
-          for n in "$@"; do
-            c=$(colour "$n")
-            if [ -n "$c" ]; then echo "$c"; return 0; fi
-          done
-          return 1
-        }
-        bg=$(pick window_bg_color view_bg_color);       bg=''${bg:-151310}
-        keys=$(pick card_bg_color view_bg_color window_bg_color); keys=''${keys:-1d1b18}
-        text=$(pick window_fg_color);                  text=''${text:-e8e1dc}
-        acc=$(pick accent_color);                      acc=''${acc:-dfc299}
-        accfg=$(pick accent_fg_color);                 accfg=''${accfg:-151310}
-
-        running() { ${pgrep} -x wvkbd-mobintl >/dev/null; }
-
-        start() {
-          running && return 0
-          ${setsid} -f ${kbd} \
-            --bg "$bg" --fg "$keys" --text "$text" \
-            --fg-sp "$acc" --text-sp "$accfg" \
-            --press "$acc" --press-sp "$acc" --swipe "$acc" \
-            -R 0 --fn "Iosevka Nerd Font Mono 14" \
-            -H 340 -L 300 >/dev/null 2>&1
-        }
-        stop() { ${pkill} -x wvkbd-mobintl 2>/dev/null || true; }
-
-        # Waits for the old keyboard to exit before starting the new one. Starting too early leaves
-        # the old process alive, so the new start is skipped and the old one dies a moment later.
-        restart() {
-          stop
-          i=0
-          while running && [ "$i" -lt 20 ]; do ${sleep} 0.1; i=$((i + 1)); done
-          running && ${pkill} -KILL -x wvkbd-mobintl 2>/dev/null
-          start
-        }
-
-        case "''${1:-toggle}" in
-          show) start ;;
-          hide) stop ;;
-          toggle) if running; then stop; else start; fi ;;
-          refresh)
-            if running; then
-              restart
-              ${logger} -t niri-osk "keyboard refreshed with the current palette"
-            fi
-            ;;
-          *)
-            echo "usage: niri-osk show|hide|toggle|refresh" >&2
-            exit 2
-            ;;
-        esac
-      '';
 
       # Reads the accelerometer's raw axes and rotates the screen to match gravity. The mapping
       # comes from measurements on this laptop: phone upright is +x (90), phone upside down is -x
@@ -202,8 +134,6 @@
     in
     {
       environment.systemPackages = [
-        pkgs.wvkbd
-        osk
         rotate
         flip
       ];
