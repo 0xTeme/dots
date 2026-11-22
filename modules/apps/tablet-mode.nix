@@ -34,7 +34,9 @@
       # comes from measurements on this laptop: phone upright is +x (90), phone upside down is -x
       # (270), landscape upright is -y (normal), landscape upside down is +y (180). A flat laptop
       # has z dominant, so the screen is left where it is. A new orientation must hold for two
-      # samples before it's applied, which stops flicker near the edges.
+      # samples before it's applied, which stops flicker near the edges. After each change, every
+      # gesture instance is stopped and the one for the new orientation is started, so only one
+      # instance ever reads the touch device.
       rotate = pkgs.writeShellScriptBin "niri-rotate" ''
         out=eDP-1
         pidfile="''${XDG_RUNTIME_DIR:-/tmp}/niri-rotate.pid"
@@ -61,6 +63,22 @@
           fi
         }
 
+        # The lisgd -o value for each screen transform: 90 degrees is one step. If a swipe goes the
+        # wrong way on a rotated screen, swap the 1 and the 3 here.
+        orient_for() {
+          case "$1" in
+            normal) echo 0 ;;
+            90) echo 1 ;;
+            180) echo 2 ;;
+            270) echo 3 ;;
+          esac
+        }
+
+        switch_gestures() {
+          ${systemctl} --user stop 'lisgd@*.service' >/dev/null 2>&1 || true
+          ${systemctl} --user start "lisgd@$1.service" >/dev/null 2>&1 || true
+        }
+
         run() {
           echo "$$" > "$pidfile"
           trap 'exit 0' TERM INT
@@ -76,7 +94,10 @@
             if [ -n "$cand" ] && [ "$cand" != "$cur" ]; then
               if [ "$cand" = "$pend" ]; then n=$((n + 1)); else pend=$cand; n=1; fi
               if [ "$n" -ge 2 ]; then
-                ${niri} msg output "$out" transform "$cand" >/dev/null 2>&1 && cur=$cand
+                if ${niri} msg output "$out" transform "$cand" >/dev/null 2>&1; then
+                  cur=$cand
+                  switch_gestures "$(orient_for "$cand")"
+                fi
                 pend=""; n=0
               fi
             fi
@@ -112,11 +133,12 @@
           on)
             : > "$toggles"
             niri-osk show
+            ${systemctl} --user stop 'lisgd@*.service' >/dev/null 2>&1 || true
+            ${systemctl} --user start "lisgd@0.service" >/dev/null 2>&1 || true
             niri-rotate start
-            ${systemctl} --user start lisgd.service
             ;;
           off)
-            ${systemctl} --user stop lisgd.service
+            ${systemctl} --user stop 'lisgd@*.service' >/dev/null 2>&1 || true
             niri-rotate stop
             niri-osk hide
             printf 'input {\n    touch {\n        off\n    }\n}\n' > "$toggles"
