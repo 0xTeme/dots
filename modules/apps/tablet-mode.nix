@@ -8,15 +8,34 @@
       setsid = "${pkgs.util-linux}/bin/setsid";
       pgrep = "${pkgs.procps}/bin/pgrep";
       pkill = "${pkgs.procps}/bin/pkill";
+      grep = "${pkgs.gnugrep}/bin/grep";
       systemctl = "${pkgs.systemd}/bin/systemctl";
       kbd = "${pkgs.wvkbd}/bin/wvkbd-mobintl";
       niri = "${pkgs.niri}/bin/niri";
 
+      # The keyboard takes its colours from Noctalia's palette, read each time it appears. wvkbd has
+      # no sharp-corner default, so the corner radius is set to 0 explicitly. Heights are in pixels:
+      # -H for the phone hold, -L for landscape. The font is the same Iosevka the terminal uses.
       osk = pkgs.writeShellScriptBin "niri-osk" ''
-        # Absolute store paths, so niri's spawn environment can't change what runs.
-        # setsid -f detaches wvkbd into its own session, so it survives the calling shell.
+        src="$HOME/.config/gtk-4.0/noctalia.css"
+        colour() {
+          ${grep} -m1 "@define-color $1 " "$src" 2>/dev/null | ${grep} -oE '#[0-9a-fA-F]{6}' | head -n1 | tr -d '#'
+        }
+        bg=$(colour headerbar_bg_color); bg=''${bg:-14130f}
+        fg=$(colour window_fg_color); fg=''${fg:-e6e2da}
+        acc=$(colour accent_color); acc=''${acc:-cfb5a6}
+        accfg=$(colour accent_fg_color); accfg=''${accfg:-14130f}
+
         running() { ${pgrep} -x wvkbd-mobintl >/dev/null; }
-        start() { running || ${setsid} -f ${kbd} >/dev/null 2>&1; }
+
+        start() {
+          running && return 0
+          ${setsid} -f ${kbd} \
+            --bg "$bg" --fg "$fg" --text "$accfg" \
+            --fg-sp "$acc" --press "$acc" --press-sp "$acc" --swipe "$acc" \
+            --corner-radius 0 --fn "Iosevka Nerd Font Mono 14" \
+            -H 340 -L 300 >/dev/null 2>&1
+        }
         stop() { ${pkill} -x wvkbd-mobintl 2>/dev/null || true; }
 
         case "''${1:-toggle}" in
