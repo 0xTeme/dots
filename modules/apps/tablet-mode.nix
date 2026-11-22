@@ -13,9 +13,9 @@
       kbd = "${pkgs.wvkbd}/bin/wvkbd-mobintl";
       niri = "${pkgs.niri}/bin/niri";
 
-      # The keyboard takes its colours from Noctalia's palette, read each time it appears. wvkbd has
-      # no sharp-corner default, so the corner radius is set to 0 explicitly. Heights are in pixels:
-      # -H for the phone hold, -L for landscape. The font is the same Iosevka the terminal uses.
+      # The keyboard takes its colours from Noctalia's palette, read each time it appears. Corners are
+      # sharp: -R 0 is this build's rounding flag. Heights are in pixels: -H for the phone hold, -L for
+      # landscape. The font is the same Iosevka the terminal uses.
       osk = pkgs.writeShellScriptBin "niri-osk" ''
         src="$HOME/.config/gtk-4.0/noctalia.css"
         colour() {
@@ -33,7 +33,7 @@
           ${setsid} -f ${kbd} \
             --bg "$bg" --fg "$fg" --text "$accfg" \
             --fg-sp "$acc" --press "$acc" --press-sp "$acc" --swipe "$acc" \
-            --corner-radius 0 --fn "Iosevka Nerd Font Mono 14" \
+            -R 0 --fn "Iosevka Nerd Font Mono 14" \
             -H 340 -L 300 >/dev/null 2>&1
         }
         stop() { ${pkill} -x wvkbd-mobintl 2>/dev/null || true; }
