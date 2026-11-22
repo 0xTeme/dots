@@ -55,6 +55,7 @@ in
           udiskie
           qt
           touch-gestures
+          osk-theme
         ];
 
         home.stateVersion = "26.05";

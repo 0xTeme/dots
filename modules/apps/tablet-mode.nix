@@ -13,26 +13,38 @@
       kbd = "${pkgs.wvkbd}/bin/wvkbd-mobintl";
       niri = "${pkgs.niri}/bin/niri";
 
-      # The keyboard takes its colours from Noctalia's palette, read each time it appears. Corners are
-      # sharp: -R 0 is this build's rounding flag. Heights are in pixels: -H for the phone hold, -L for
-      # landscape. The font is the same Iosevka the terminal uses.
+      # Colours come from Noctalia's palette, read when the keyboard starts and again on a palette
+      # change (see niri-osk refresh). Roles follow the surface model: the background and the key
+      # fill are surface tones, the key text is the foreground, and special keys use the accent.
+      # Each role tries a few names, so one missing name doesn't break the keyboard. -R 0 keeps the
+      # corners sharp. -H and -L are the phone-hold and landscape heights, in pixels.
       osk = pkgs.writeShellScriptBin "niri-osk" ''
         src="$HOME/.config/gtk-4.0/noctalia.css"
         colour() {
           ${grep} -m1 "@define-color $1 " "$src" 2>/dev/null | ${grep} -oE '#[0-9a-fA-F]{6}' | head -n1 | tr -d '#'
         }
-        bg=$(colour headerbar_bg_color); bg=''${bg:-14130f}
-        fg=$(colour window_fg_color); fg=''${fg:-e6e2da}
-        acc=$(colour accent_color); acc=''${acc:-cfb5a6}
-        accfg=$(colour accent_fg_color); accfg=''${accfg:-14130f}
+        pick() {
+          local n c
+          for n in "$@"; do
+            c=$(colour "$n")
+            if [ -n "$c" ]; then echo "$c"; return 0; fi
+          done
+          return 1
+        }
+        bg=$(pick window_bg_color view_bg_color);       bg=''${bg:-151310}
+        keys=$(pick card_bg_color view_bg_color window_bg_color); keys=''${keys:-1d1b18}
+        text=$(pick window_fg_color);                  text=''${text:-e8e1dc}
+        acc=$(pick accent_color);                      acc=''${acc:-dfc299}
+        accfg=$(pick accent_fg_color);                 accfg=''${accfg:-151310}
 
         running() { ${pgrep} -x wvkbd-mobintl >/dev/null; }
 
         start() {
           running && return 0
           ${setsid} -f ${kbd} \
-            --bg "$bg" --fg "$fg" --text "$accfg" \
-            --fg-sp "$acc" --press "$acc" --press-sp "$acc" --swipe "$acc" \
+            --bg "$bg" --fg "$keys" --text "$text" \
+            --fg-sp "$acc" --text-sp "$accfg" \
+            --press "$acc" --press-sp "$acc" --swipe "$acc" \
             -R 0 --fn "Iosevka Nerd Font Mono 14" \
             -H 340 -L 300 >/dev/null 2>&1
         }
@@ -42,8 +54,9 @@
           show) start ;;
           hide) stop ;;
           toggle) if running; then stop; else start; fi ;;
+          refresh) if running; then stop; sleep 0.3; start; fi ;;
           *)
-            echo "usage: niri-osk show|hide|toggle" >&2
+            echo "usage: niri-osk show|hide|toggle|refresh" >&2
             exit 2
             ;;
         esac
